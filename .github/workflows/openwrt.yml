@@ -3,7 +3,7 @@
 # Target repo: jfy9606/amlogic-s9xxx-openwrt (private)
 #==========================================================================
 
-name: Build OpenWrt (Actions-AB)
+name: "Build OpenWrt (Actions-AB)"
 
 on:
   repository_dispatch:
@@ -493,7 +493,7 @@ on:
 env:
   TZ: Etc/UTC
   CCACHE_DIR: /builder/openwrt/.ccache
-  TARGET_REPO: jfy9606/amlogic-s9xxx-openwrt
+  TARGET_REPO: ${{ secrets.RELEASE_REPO || vars.RELEASE_REPO || 'jfy9606/amlogic-s9xxx-openwrt' }}
 
 jobs:
   setup-from-source:
@@ -565,7 +565,7 @@ jobs:
     if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'from-source' }}
     runs-on: ubuntu-24.04
     permissions:
-      contents: write
+      contents: read
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.setup-from-source.outputs.matrix) }}
@@ -724,17 +724,18 @@ jobs:
           df -hT ${PWD}
           echo "status=success" >> ${GITHUB_OUTPUT}
       - name: Upload OpenWrt rootfs to Release
-        uses: jfy9606/upload-to-releases@main
         if: ${{ steps.clean.outputs.status == 'success' && !cancelled() }}
-        with:
-          tag: ${{ env.build_tag }}
-          artifacts: openwrt/output/*
-          repo: ${{ env.TARGET_REPO }}
-          allow_updates: true
-          remove_artifacts: false
-          replaces_artifacts: true
-          make_latest: true
-          gh_token: ${{ secrets.RELEASE_TOKEN }}
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          TAG="${{ env.build_tag }}"
+          RELEASE_REPO="${{ env.TARGET_REPO }}"
+          gh release delete "$TAG" --repo "$RELEASE_REPO" --cleanup-tag --yes 2>/dev/null || true
+          gh release create "$TAG" --repo "$RELEASE_REPO" \
+            --title "$TAG" \
+            --notes "Auto-built from commit ${{ github.sha }}" \
+            --latest \
+            openwrt/output/*
       - name: Package OpenWrt for target boards
         if: ${{ steps.clean.outputs.status == 'success' && !cancelled() }}
         uses: ./.github/actions/amlogic-s9xxx-openwrt
@@ -748,38 +749,43 @@ jobs:
           kernel_usage: ${{ inputs.kernel_usage }}
           builder_name: ${{ inputs.builder_name }}
       - name: Upload packaged OpenWrt to Release
-        uses: jfy9606/upload-to-releases@main
         if: ${{ env.PACKAGED_STATUS == 'success' && !cancelled() }}
-        with:
-          tag: ${{ env.build_tag }}
-          artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/*
-          repo: ${{ env.TARGET_REPO }}
-          allow_updates: true
-          remove_artifacts: false
-          replaces_artifacts: true
-          make_latest: true
-          gh_token: ${{ secrets.RELEASE_TOKEN }}
-          body: |
-            ### OpenWrt Image Information
-            - Default IP: `192.168.1.1`
-            - Default username: `root`
-            - Default password: `password`
-            - Default WIFI name: `OpenWrt`
-            - Default WIFI password: `none`
-            ### Install to EMMC
-            - Login to OpenWrt → `System` → `Amlogic Service` → `Install OpenWrt`
-            ### OpenWrt source code
-            - [${{ env.REPO_NAME }}](${{ env.REPO_URL }}/tree/${{ env.REPO_BRANCH }})
-            ### Applicable Platform
-            - 🐧 `arm64`
-            - 🐋 Docker image: https://hub.docker.com/u/ophub
-
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          TAG="${{ env.build_tag }}"
+          RELEASE_REPO="${{ env.TARGET_REPO }}"
+          NOTES_FILE="$(mktemp)"
+          cat > "$NOTES_FILE" <<'EOF'
+          ### OpenWrt Image Information
+          - Default IP: `192.168.1.1`
+          - Default username: `root`
+          - Default password: `password`
+          - Default WIFI name: `OpenWrt`
+          - Default WIFI password: `none`
+          ### Install to EMMC
+          - Login to OpenWrt → `System` → `Amlogic Service` → `Install OpenWrt`
+          ### OpenWrt source code
+          - [${{ env.REPO_NAME }}](${{ env.REPO_URL }}/tree/${{ env.REPO_BRANCH }})
+          ### Applicable Platform
+          - 🐧 `arm64`
+          - 🐋 Docker image: https://hub.docker.com/u/ophub
+          EOF
+          echo "" >> "$NOTES_FILE"
+          echo "Built from commit ${{ github.sha }}" >> "$NOTES_FILE"
+          gh release delete "$TAG" --repo "$RELEASE_REPO" --cleanup-tag --yes 2>/dev/null || true
+          gh release create "$TAG" --repo "$RELEASE_REPO" \
+            --title "$TAG" \
+            --notes-file "$NOTES_FILE" \
+            --latest \
+            ${{ env.PACKAGED_OUTPUTPATH }}/*
+          rm -f "$NOTES_FILE"
   build-from-release:
     needs: [setup-from-release]
     if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'from-release' }}
     runs-on: ubuntu-26.04-arm
     permissions:
-      contents: write
+      contents: read
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.setup-from-release.outputs.matrix) }}
@@ -899,37 +905,42 @@ jobs:
           kernel_usage: ${{ inputs.kernel_usage }}
           builder_name: ${{ inputs.builder_name }}
       - name: Upload packaged OpenWrt to Release
-        uses: jfy9606/upload-to-releases@main
         if: ${{ env.PACKAGED_STATUS == 'success' && !cancelled() }}
-        with:
-          tag: ${{ env.build_tag }}
-          artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/*
-          repo: ${{ env.TARGET_REPO }}
-          allow_updates: true
-          remove_artifacts: false
-          replaces_artifacts: true
-          make_latest: true
-          gh_token: ${{ secrets.RELEASE_TOKEN }}
-          body: |
-            ### OpenWrt Image Information
-            - Default IP: `192.168.1.1`
-            - Default username: `root`
-            - Default password: `password`
-            - Default WIFI name: `OpenWrt`
-            - Default WIFI password: `none`
-            ### Install to EMMC
-            - Login to OpenWrt → `System` → `Amlogic Service` → `Install OpenWrt`
-            ### OpenWrt source code
-            - [${{ env.REPO_NAME }}](${{ env.REPO_URL }}/tree/${{ env.REPO_BRANCH }})
-            ### Applicable Platform
-            - 🐧 `arm64`
-            - 🐋 Docker image: https://hub.docker.com/u/ophub
-
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          TAG="${{ env.build_tag }}"
+          RELEASE_REPO="${{ env.TARGET_REPO }}"
+          NOTES_FILE="$(mktemp)"
+          cat > "$NOTES_FILE" <<'EOF'
+          ### OpenWrt Image Information
+          - Default IP: `192.168.1.1`
+          - Default username: `root`
+          - Default password: `password`
+          - Default WIFI name: `OpenWrt`
+          - Default WIFI password: `none`
+          ### Install to EMMC
+          - Login to OpenWrt → `System` → `Amlogic Service` → `Install OpenWrt`
+          ### OpenWrt source code
+          - [${{ env.REPO_NAME }}](${{ env.REPO_URL }}/tree/${{ env.REPO_BRANCH }})
+          ### Applicable Platform
+          - 🐧 `arm64`
+          - 🐋 Docker image: https://hub.docker.com/u/ophub
+          EOF
+          echo "" >> "$NOTES_FILE"
+          echo "Built from commit ${{ github.sha }}" >> "$NOTES_FILE"
+          gh release delete "$TAG" --repo "$RELEASE_REPO" --cleanup-tag --yes 2>/dev/null || true
+          gh release create "$TAG" --repo "$RELEASE_REPO" \
+            --title "$TAG" \
+            --notes-file "$NOTES_FILE" \
+            --latest \
+            ${{ env.PACKAGED_OUTPUTPATH }}/*
+          rm -f "$NOTES_FILE"
   build-from-imagebuilder:
     if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'from-imagebuilder' }}
     runs-on: ubuntu-26.04
     permissions:
-      contents: write
+      contents: read
     env:
       IMAGEBUILDER_SH: ./.github/actions/amlogic-s9xxx-openwrt/config/imagebuilder/imagebuilder.sh
     steps:
@@ -994,17 +1005,18 @@ jobs:
           df -hT ${PWD}
           echo "status=success" >> ${GITHUB_OUTPUT}
       - name: Upload OpenWrt rootfs to Release
-        uses: jfy9606/upload-to-releases@main
         if: ${{ steps.imagebuilder.outputs.status == 'success' && !cancelled() }}
-        with:
-          tag: ${{ env.build_tag }}
-          artifacts: output/*
-          repo: ${{ env.TARGET_REPO }}
-          allow_updates: true
-          remove_artifacts: false
-          replaces_artifacts: true
-          make_latest: true
-          gh_token: ${{ secrets.RELEASE_TOKEN }}
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          TAG="${{ env.build_tag }}"
+          RELEASE_REPO="${{ env.TARGET_REPO }}"
+          gh release delete "$TAG" --repo "$RELEASE_REPO" --cleanup-tag --yes 2>/dev/null || true
+          gh release create "$TAG" --repo "$RELEASE_REPO" \
+            --title "$TAG" \
+            --notes "Auto-built from commit ${{ github.sha }}" \
+            --latest \
+            output/*
       - name: Package OpenWrt for target boards
         if: ${{ steps.imagebuilder.outputs.status == 'success' && !cancelled() }}
         uses: ./.github/actions/amlogic-s9xxx-openwrt
@@ -1018,35 +1030,40 @@ jobs:
           kernel_usage: ${{ inputs.kernel_usage }}
           builder_name: ${{ inputs.builder_name }}
       - name: Upload packaged OpenWrt to Release
-        uses: jfy9606/upload-to-releases@main
         if: ${{ env.PACKAGED_STATUS == 'success' && !cancelled() }}
-        with:
-          tag: ${{ env.build_tag }}
-          artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/*
-          repo: ${{ env.TARGET_REPO }}
-          allow_updates: true
-          remove_artifacts: false
-          replaces_artifacts: true
-          make_latest: true
-          gh_token: ${{ secrets.RELEASE_TOKEN }}
-          body: |
-            ### OpenWrt Image Information
-            - Default IP: `192.168.1.1`
-            - Default username: `root`
-            - Default password: `password`
-            - Default WIFI name: `OpenWrt`
-            - Default WIFI password: `none`
-            ### Install to EMMC
-            - Login to OpenWrt → `System` → `Amlogic Service` → `Install OpenWrt`
-            ### Applicable Platform
-            - 🐧 `arm64`
-            - 🐋 Docker image: https://hub.docker.com/u/ophub
-
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          TAG="${{ env.build_tag }}"
+          RELEASE_REPO="${{ env.TARGET_REPO }}"
+          NOTES_FILE="$(mktemp)"
+          cat > "$NOTES_FILE" <<'EOF'
+          ### OpenWrt Image Information
+          - Default IP: `192.168.1.1`
+          - Default username: `root`
+          - Default password: `password`
+          - Default WIFI name: `OpenWrt`
+          - Default WIFI password: `none`
+          ### Install to EMMC
+          - Login to OpenWrt → `System` → `Amlogic Service` → `Install OpenWrt`
+          ### Applicable Platform
+          - 🐧 `arm64`
+          - 🐋 Docker image: https://hub.docker.com/u/ophub
+          EOF
+          echo "" >> "$NOTES_FILE"
+          echo "Built from commit ${{ github.sha }}" >> "$NOTES_FILE"
+          gh release delete "$TAG" --repo "$RELEASE_REPO" --cleanup-tag --yes 2>/dev/null || true
+          gh release create "$TAG" --repo "$RELEASE_REPO" \
+            --title "$TAG" \
+            --notes-file "$NOTES_FILE" \
+            --latest \
+            ${{ env.PACKAGED_OUTPUTPATH }}/*
+          rm -f "$NOTES_FILE"
   build-from-unifreq:
     if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'from-unifreq' }}
     runs-on: ubuntu-26.04-arm
     permissions:
-      contents: write
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -1133,7 +1150,7 @@ jobs:
           echo "build_tag=OpenWrt_armv8_${{ inputs.openwrt_storage }}_$(date +"%Y.%m")" >> ${GITHUB_ENV}
           echo "status=success" >> ${GITHUB_OUTPUT}
       - name: Package OpenWrt Firmware
-        uses: jfy9606/flippy-openwrt-actions@main
+        uses: ophub/flippy-openwrt-actions@main
         if: ${{ steps.download.outputs.status == 'success' && !cancelled() }}
         env:
           OPENWRT_ARMSR: opt/download/*rootfs.tar.gz
@@ -1146,38 +1163,43 @@ jobs:
           SCRIPT_DIY_PATH: ${{ inputs.script_diy_path }}
           WHOAMI: ${{ inputs.builder_name }}
       - name: Upload OpenWrt Firmware to Release
-        uses: jfy9606/upload-to-releases@main
         if: ${{ env.PACKAGED_STATUS == 'success' && !cancelled() }}
-        with:
-          tag: ${{ env.build_tag }}
-          artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/*
-          repo: ${{ env.TARGET_REPO }}
-          allow_updates: true
-          remove_artifacts: false
-          replaces_artifacts: true
-          make_latest: true
-          gh_token: ${{ secrets.RELEASE_TOKEN }}
-          body: |
-            ### OpenWrt Image Information
-            - Default IP: `192.168.1.1`
-            - Default username: `root`
-            - Default password: `password`
-            - Default WIFI name: `OpenWrt`
-            - Default WIFI password: `none`
-            ### Install to EMMC
-            - Login to OpenWrt → `System` → `Amlogic Service` → `Install OpenWrt`
-            ### OpenWrt source code
-            - [coolsnowwolf/lede](https://github.com/coolsnowwolf/lede)
-            ### Applicable Platform
-            - 🐧 `arm64`
-            - 🐋 Docker image: https://hub.docker.com/u/ophub
-
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          TAG="${{ env.build_tag }}"
+          RELEASE_REPO="${{ env.TARGET_REPO }}"
+          NOTES_FILE="$(mktemp)"
+          cat > "$NOTES_FILE" <<'EOF'
+          ### OpenWrt Image Information
+          - Default IP: `192.168.1.1`
+          - Default username: `root`
+          - Default password: `password`
+          - Default WIFI name: `OpenWrt`
+          - Default WIFI password: `none`
+          ### Install to EMMC
+          - Login to OpenWrt → `System` → `Amlogic Service` → `Install OpenWrt`
+          ### OpenWrt source code
+          - [coolsnowwolf/lede](https://github.com/coolsnowwolf/lede)
+          ### Applicable Platform
+          - 🐧 `arm64`
+          - 🐋 Docker image: https://hub.docker.com/u/ophub
+          EOF
+          echo "" >> "$NOTES_FILE"
+          echo "Built from commit ${{ github.sha }}" >> "$NOTES_FILE"
+          gh release delete "$TAG" --repo "$RELEASE_REPO" --cleanup-tag --yes 2>/dev/null || true
+          gh release create "$TAG" --repo "$RELEASE_REPO" \
+            --title "$TAG" \
+            --notes-file "$NOTES_FILE" \
+            --latest \
+            ${{ env.PACKAGED_OUTPUTPATH }}/*
+          rm -f "$NOTES_FILE"
   build-compile-kernel:
     needs: [setup-compile-kernel]
     if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'compile-kernel' }}
     runs-on: ubuntu-26.04-arm
     permissions:
-      contents: write
+      contents: read
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.setup-compile-kernel.outputs.matrix) }}
@@ -1274,31 +1296,36 @@ jobs:
           docker_hostpath: /builder
           docker_image: jfy9606/armbian-${{ inputs.docker_image }}:arm64
       - name: Upload Kernel to Release
-        uses: jfy9606/upload-to-releases@main
         if: ${{ env.PACKAGED_STATUS == 'success' && !cancelled() }}
-        with:
-          tag: kernel_stable
-          artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/*
-          repo: ${{ env.TARGET_REPO }}
-          allow_updates: true
-          remove_artifacts: false
-          replaces_artifacts: true
-          make_latest: false
-          gh_token: ${{ secrets.RELEASE_TOKEN }}
-          body: |
-            - These are Mainline LTS(Long Term Support) kernels that provide `stable` support for Armbian and OpenWrt.
-            - It works with most `Amlogic`, `Rockchip`, and `Allwinner` devices. For specific details, please refer to the instructions on the homepage of repository.
-            - Dedicated BSP kernels for other Rockchip and Allwinner devices can be downloaded from the [ophub/kernel](https://github.com/ophub/kernel) repository.
-            - 这些是主线 LTS（长期支持）内核，为 Armbian 和 OpenWrt 提供`稳定`的支持。
-            - 适用于 `amlogic`，`rockchip`，`allwinner` 的大部分设备，具体可以参考仓库首页的说明。
-            - 其他的 Rockchip 和 Allwinner 设备专用 BSP 内核可以在 [ophub/kernel](https://github.com/ophub/kernel) 仓库里下载使用。
-
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          TAG="kernel_stable"
+          RELEASE_REPO="${{ env.TARGET_REPO }}"
+          NOTES_FILE="$(mktemp)"
+          cat > "$NOTES_FILE" <<'EOF'
+          - These are Mainline LTS(Long Term Support) kernels that provide `stable` support for Armbian and OpenWrt.
+          - It works with most `Amlogic`, `Rockchip`, and `Allwinner` devices. For specific details, please refer to the instructions on the homepage of repository.
+          - Dedicated BSP kernels for other Rockchip and Allwinner devices can be downloaded from the [ophub/kernel](https://github.com/ophub/kernel) repository.
+          - 这些是主线 LTS（长期支持）内核，为 Armbian 和 OpenWrt 提供`稳定`的支持。
+          - 适用于 `amlogic`，`rockchip`，`allwinner` 的大部分设备，具体可以参考仓库首页的说明。
+          - 其他的 Rockchip 和 Allwinner 设备专用 BSP 内核可以在 [ophub/kernel](https://github.com/ophub/kernel) 仓库里下载使用。
+          EOF
+          echo "" >> "$NOTES_FILE"
+          echo "Built from commit ${{ github.sha }}" >> "$NOTES_FILE"
+          gh release delete "$TAG" --repo "$RELEASE_REPO" --cleanup-tag --yes 2>/dev/null || true
+          gh release create "$TAG" --repo "$RELEASE_REPO" \
+            --title "$TAG" \
+            --notes-file "$NOTES_FILE" \
+            --latest=false \
+            ${{ env.PACKAGED_OUTPUTPATH }}/*
+          rm -f "$NOTES_FILE"
   build-docker:
     needs: [setup-docker]
     if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'docker' }}
     runs-on: ubuntu-26.04-arm
     permissions:
-      contents: write
+      contents: read
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.setup-docker.outputs.matrix) }}
@@ -1374,31 +1401,37 @@ jobs:
           ${MAKE_DOCKER_SH} ${{ matrix.source_branch }} arm64
           echo "status=success" >> ${GITHUB_OUTPUT}
       - name: Upload packaged OpenWrt to Release
-        uses: jfy9606/upload-to-releases@main
         if: ${{ steps.make.outputs.status == 'success' && !cancelled() }}
-        with:
-          tag: ${{ steps.down.outputs.build_tag }}
-          artifacts: out/*.tar.gz
-          repo: ${{ env.TARGET_REPO }}
-          allow_updates: true
-          remove_artifacts: false
-          replaces_artifacts: true
-          make_latest: true
-          gh_token: ${{ secrets.RELEASE_TOKEN }}
-          body: |
-            ### OpenWrt Image Information
-            - Default IP: `192.168.1.1`
-            - Default username: `root`
-            - Default password: `password`
-            - Default WIFI name: `OpenWrt`
-            - Default WIFI password: `none`
-            ### Install to EMMC
-            - Login to OpenWrt → `System` → `Amlogic Service` → `Install OpenWrt`
-            ### OpenWrt source code
-            - [${{ env.REPO_NAME }}](${{ env.REPO_URL }}/tree/${{ env.REPO_BRANCH }})
-            ### Applicable Platform
-            - 🐧 `arm64`
-            - 🐋 Docker image: https://hub.docker.com/u/ophub
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          TAG="${{ steps.down.outputs.build_tag }}"
+          RELEASE_REPO="${{ env.TARGET_REPO }}"
+          NOTES_FILE="$(mktemp)"
+          cat > "$NOTES_FILE" <<'EOF'
+          ### OpenWrt Image Information
+          - Default IP: `192.168.1.1`
+          - Default username: `root`
+          - Default password: `password`
+          - Default WIFI name: `OpenWrt`
+          - Default WIFI password: `none`
+          ### Install to EMMC
+          - Login to OpenWrt → `System` → `Amlogic Service` → `Install OpenWrt`
+          ### OpenWrt source code
+          - [${{ env.REPO_NAME }}](${{ env.REPO_URL }}/tree/${{ env.REPO_BRANCH }})
+          ### Applicable Platform
+          - 🐧 `arm64`
+          - 🐋 Docker image: https://hub.docker.com/u/ophub
+          EOF
+          echo "" >> "$NOTES_FILE"
+          echo "Built from commit ${{ github.sha }}" >> "$NOTES_FILE"
+          gh release delete "$TAG" --repo "$RELEASE_REPO" --cleanup-tag --yes 2>/dev/null || true
+          gh release create "$TAG" --repo "$RELEASE_REPO" \
+            --title "$TAG" \
+            --notes-file "$NOTES_FILE" \
+            --latest \
+            out/*.tar.gz
+          rm -f "$NOTES_FILE"
       - name: Login to Docker Hub
         id: login
         if: ${{ steps.make.outputs.status == 'success' && !cancelled() }}

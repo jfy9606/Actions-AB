@@ -3,7 +3,7 @@
 # Target repo: jfy9606/amlogic-s9xxx-armbian (private)
 #==========================================================================
 
-name: Build Armbian (Actions-AB)
+name: "Build Armbian (Actions-AB)"
 
 on:
   repository_dispatch:
@@ -494,7 +494,7 @@ env:
   TZ: Etc/UTC
   ROOTFS_SCRIPT: compile-kernel/tools/script/docker/build_armbian_rootfs_file.sh
   MAKE_DOCKER_SH: compile-kernel/tools/script/docker/build_armbian_docker_image.sh
-  TARGET_REPO: jfy9606/amlogic-s9xxx-armbian
+  TARGET_REPO: ${{ secrets.RELEASE_REPO || vars.RELEASE_REPO || 'jfy9606/amlogic-s9xxx-armbian' }}
 
 jobs:
   setup-from-source:
@@ -566,7 +566,7 @@ jobs:
     if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'from-source' }}
     runs-on: ubuntu-24.04
     permissions:
-      contents: write
+      contents: read
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.setup-from-source.outputs.matrix) }}
@@ -684,17 +684,18 @@ jobs:
           ${MAKE_DOCKER_SH} ${{ matrix.release }} amd64
           echo "status=success" >> ${GITHUB_OUTPUT}
       - name: Upload Armbian image to Release [arm64]
-        uses: jfy9606/upload-to-releases@main
         if: ${{ steps.clean-arm64.outputs.status == 'success' && !cancelled() }}
-        with:
-          tag: ${{ env.build_tag }}
-          artifacts: build/output/images/*
-          repo: ${{ env.TARGET_REPO }}
-          allow_updates: true
-          remove_artifacts: false
-          replaces_artifacts: true
-          make_latest: true
-          gh_token: ${{ secrets.RELEASE_TOKEN }}
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          TAG="${{ env.build_tag }}"
+          RELEASE_REPO="${{ env.TARGET_REPO }}"
+          gh release delete "$TAG" --repo "$RELEASE_REPO" --cleanup-tag --yes 2>/dev/null || true
+          gh release create "$TAG" --repo "$RELEASE_REPO" \
+            --title "$TAG" \
+            --notes "Auto-built from commit ${{ github.sha }}" \
+            --latest \
+            build/output/images/*
       - name: Rebuild Armbian for target boards [arm64]
         uses: ./.github/actions/amlogic-s9xxx-armbian
         if: ${{ steps.clean-arm64.outputs.status == 'success' && !cancelled() }}
@@ -709,45 +710,57 @@ jobs:
           armbian_fstype: ${{ inputs.armbian_fstype }}
           builder_name: ${{ inputs.builder_name }}
       - name: Upload rebuilt images to Release [arm64]
-        uses: jfy9606/upload-to-releases@main
         if: ${{ env.PACKAGED_STATUS == 'success' && inputs.sub_task == 'arm64' && !cancelled() }}
-        with:
-          tag: ${{ env.build_tag }}
-          artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/*
-          repo: ${{ env.TARGET_REPO }}
-          allow_updates: true
-          remove_artifacts: false
-          replaces_artifacts: true
-          make_latest: true
-          gh_token: ${{ secrets.RELEASE_TOKEN }}
-          body: |
-            ### Armbian Image Information
-            - Default username: `root`
-            - Default password: `1234`
-            - Install command: `armbian-install`
-            - Update command: `armbian-update`
-            ### Applicable Platform
-            - 🐧 `arm64`
-            - 🐋 Docker image: https://hub.docker.com/u/ophub
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          TAG="${{ env.build_tag }}"
+          RELEASE_REPO="${{ env.TARGET_REPO }}"
+          NOTES_FILE="$(mktemp)"
+          cat > "$NOTES_FILE" <<'EOF'
+          ### Armbian Image Information
+          - Default username: `root`
+          - Default password: `1234`
+          - Install command: `armbian-install`
+          - Update command: `armbian-update`
+          ### Applicable Platform
+          - 🐧 `arm64`
+          - 🐋 Docker image: https://hub.docker.com/u/ophub
+          EOF
+          echo "" >> "$NOTES_FILE"
+          echo "Built from commit ${{ github.sha }}" >> "$NOTES_FILE"
+          gh release delete "$TAG" --repo "$RELEASE_REPO" --cleanup-tag --yes 2>/dev/null || true
+          gh release create "$TAG" --repo "$RELEASE_REPO" \
+            --title "$TAG" \
+            --notes-file "$NOTES_FILE" \
+            --latest \
+            ${{ env.PACKAGED_OUTPUTPATH }}/*
+          rm -f "$NOTES_FILE"
       - name: Upload Armbian image to Release [x86]
-        uses: jfy9606/upload-to-releases@main
         if: ${{ steps.clean-x86.outputs.status == 'success' && !cancelled() }}
-        with:
-          tag: ${{ env.build_tag }}
-          artifacts: "armbian/*,out/*"
-          repo: ${{ env.TARGET_REPO }}
-          allow_updates: true
-          remove_artifacts: false
-          replaces_artifacts: true
-          make_latest: false
-          gh_token: ${{ secrets.RELEASE_TOKEN }}
-          body: |
-            ### Armbian Image Information
-            - Default username: `root`
-            - Default password: `1234`
-            ### Applicable Platform
-            - 💻 `amd64(uefi-x86)`
-            - 🐋 Docker image: https://hub.docker.com/u/ophub
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          TAG="${{ env.build_tag }}"
+          RELEASE_REPO="${{ env.TARGET_REPO }}"
+          NOTES_FILE="$(mktemp)"
+          cat > "$NOTES_FILE" <<'EOF'
+          ### Armbian Image Information
+          - Default username: `root`
+          - Default password: `1234`
+          ### Applicable Platform
+          - 💻 `amd64(uefi-x86)`
+          - 🐋 Docker image: https://hub.docker.com/u/ophub
+          EOF
+          echo "" >> "$NOTES_FILE"
+          echo "Built from commit ${{ github.sha }}" >> "$NOTES_FILE"
+          gh release delete "$TAG" --repo "$RELEASE_REPO" --cleanup-tag --yes 2>/dev/null || true
+          gh release create "$TAG" --repo "$RELEASE_REPO" \
+            --title "$TAG" \
+            --notes-file "$NOTES_FILE" \
+            --latest=false \
+            armbian/*,out/*
+          rm -f "$NOTES_FILE"
       - name: Login to Docker Hub [x86]
         id: login
         if: ${{ steps.makedocker.outputs.status == 'success' && !cancelled() }}
@@ -772,7 +785,7 @@ jobs:
     if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'from-official' }}
     runs-on: ubuntu-26.04-arm
     permissions:
-      contents: write
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -869,33 +882,38 @@ jobs:
           armbian_fstype: ${{ inputs.armbian_fstype }}
           builder_name: ${{ inputs.builder_name }}
       - name: Upload Armbian images to Release
-        uses: jfy9606/upload-to-releases@main
         if: ${{ env.PACKAGED_STATUS == 'success' && !cancelled() }}
-        with:
-          tag: ${{ env.build_tag }}
-          artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/*
-          repo: ${{ env.TARGET_REPO }}
-          allow_updates: true
-          remove_artifacts: false
-          replaces_artifacts: true
-          make_latest: true
-          gh_token: ${{ secrets.RELEASE_TOKEN }}
-          body: |
-            ### Armbian Image Information
-            - Default username: `root`
-            - Default password: `1234`
-            - Install command: `armbian-install`
-            - Update command: `armbian-update`
-            ### Applicable Platform
-            - 🐧 `arm64`
-            - 🐋 Docker image: https://hub.docker.com/u/ophub
-
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          TAG="${{ env.build_tag }}"
+          RELEASE_REPO="${{ env.TARGET_REPO }}"
+          NOTES_FILE="$(mktemp)"
+          cat > "$NOTES_FILE" <<'EOF'
+          ### Armbian Image Information
+          - Default username: `root`
+          - Default password: `1234`
+          - Install command: `armbian-install`
+          - Update command: `armbian-update`
+          ### Applicable Platform
+          - 🐧 `arm64`
+          - 🐋 Docker image: https://hub.docker.com/u/ophub
+          EOF
+          echo "" >> "$NOTES_FILE"
+          echo "Built from commit ${{ github.sha }}" >> "$NOTES_FILE"
+          gh release delete "$TAG" --repo "$RELEASE_REPO" --cleanup-tag --yes 2>/dev/null || true
+          gh release create "$TAG" --repo "$RELEASE_REPO" \
+            --title "$TAG" \
+            --notes-file "$NOTES_FILE" \
+            --latest \
+            ${{ env.PACKAGED_OUTPUTPATH }}/*
+          rm -f "$NOTES_FILE"
   build-from-release:
     needs: [setup-from-release]
     if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'from-release' }}
     runs-on: ubuntu-26.04-arm
     permissions:
-      contents: write
+      contents: read
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.setup-from-release.outputs.matrix) }}
@@ -999,33 +1017,38 @@ jobs:
           armbian_fstype: ${{ inputs.armbian_fstype }}
           builder_name: ${{ inputs.builder_name }}
       - name: Upload Armbian images to Release
-        uses: jfy9606/upload-to-releases@main
         if: ${{ env.PACKAGED_STATUS == 'success' && !cancelled() }}
-        with:
-          tag: ${{ env.build_tag }}
-          artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/*
-          repo: ${{ env.TARGET_REPO }}
-          allow_updates: true
-          remove_artifacts: false
-          replaces_artifacts: true
-          make_latest: true
-          gh_token: ${{ secrets.RELEASE_TOKEN }}
-          body: |
-            ### Armbian Image Information
-            - Default username: `root`
-            - Default password: `1234`
-            - Install command: `armbian-install`
-            - Update command: `armbian-update`
-            ### Applicable Platform
-            - 🐧 `arm64`
-            - 🐋 Docker image: https://hub.docker.com/u/ophub
-
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          TAG="${{ env.build_tag }}"
+          RELEASE_REPO="${{ env.TARGET_REPO }}"
+          NOTES_FILE="$(mktemp)"
+          cat > "$NOTES_FILE" <<'EOF'
+          ### Armbian Image Information
+          - Default username: `root`
+          - Default password: `1234`
+          - Install command: `armbian-install`
+          - Update command: `armbian-update`
+          ### Applicable Platform
+          - 🐧 `arm64`
+          - 🐋 Docker image: https://hub.docker.com/u/ophub
+          EOF
+          echo "" >> "$NOTES_FILE"
+          echo "Built from commit ${{ github.sha }}" >> "$NOTES_FILE"
+          gh release delete "$TAG" --repo "$RELEASE_REPO" --cleanup-tag --yes 2>/dev/null || true
+          gh release create "$TAG" --repo "$RELEASE_REPO" \
+            --title "$TAG" \
+            --notes-file "$NOTES_FILE" \
+            --latest \
+            ${{ env.PACKAGED_OUTPUTPATH }}/*
+          rm -f "$NOTES_FILE"
   build-compile-kernel-default:
     needs: [setup-compile-kernel]
     if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'compile-kernel' && inputs.sub_task == 'default' }}
     runs-on: ubuntu-26.04-arm
     permissions:
-      contents: write
+      contents: read
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.setup-compile-kernel.outputs.matrix) }}
@@ -1120,28 +1143,35 @@ jobs:
           docker_hostpath: /builder
           docker_image: jfy9606/armbian-${{ inputs.docker_image }}:arm64
       - name: Upload Kernel to Release
-        uses: jfy9606/upload-to-releases@main
         if: ${{ env.PACKAGED_STATUS == 'success' && !cancelled() }}
-        with:
-          tag: kernel_stable
-          artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/*
-          repo: ${{ env.TARGET_REPO }}
-          allow_updates: true
-          remove_artifacts: false
-          replaces_artifacts: true
-          make_latest: false
-          gh_token: ${{ secrets.RELEASE_TOKEN }}
-          body: |
-            - These are Mainline LTS(Long Term Support) kernels that provide `stable` support for Armbian and OpenWrt.
-            - It works with most `Amlogic`, `Rockchip`, and `Allwinner` devices. For specific details, please refer to the instructions on the homepage of repository.
-            - Dedicated BSP kernels for other Rockchip and Allwinner devices can be downloaded from the [ophub/kernel](https://github.com/ophub/kernel) repository.
-            - 这些是主线 LTS（长期支持）内核，为 Armbian 和 OpenWrt 提供`稳定`的支持。
-            - 适用于 `amlogic`，`rockchip`，`allwinner` 的大部分设备，具体可以参考仓库首页的说明。
-            - 其他的 Rockchip 和 Allwinner 设备专用 BSP 内核可以在 [ophub/kernel](https://github.com/ophub/kernel) 仓库里下载使用。
-
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          TAG="kernel_stable"
+          RELEASE_REPO="${{ env.TARGET_REPO }}"
+          NOTES_FILE="$(mktemp)"
+          cat > "$NOTES_FILE" <<'EOF'
+          - These are Mainline LTS(Long Term Support) kernels that provide `stable` support for Armbian and OpenWrt.
+          - It works with most `Amlogic`, `Rockchip`, and `Allwinner` devices. For specific details, please refer to the instructions on the homepage of repository.
+          - Dedicated BSP kernels for other Rockchip and Allwinner devices can be downloaded from the [ophub/kernel](https://github.com/ophub/kernel) repository.
+          - 这些是主线 LTS（长期支持）内核，为 Armbian 和 OpenWrt 提供`稳定`的支持。
+          - 适用于 `amlogic`，`rockchip`，`allwinner` 的大部分设备，具体可以参考仓库首页的说明。
+          - 其他的 Rockchip 和 Allwinner 设备专用 BSP 内核可以在 [ophub/kernel](https://github.com/ophub/kernel) 仓库里下载使用。
+          EOF
+          echo "" >> "$NOTES_FILE"
+          echo "Built from commit ${{ github.sha }}" >> "$NOTES_FILE"
+          gh release delete "$TAG" --repo "$RELEASE_REPO" --cleanup-tag --yes 2>/dev/null || true
+          gh release create "$TAG" --repo "$RELEASE_REPO" \
+            --title "$TAG" \
+            --notes-file "$NOTES_FILE" \
+            --latest=false \
+            ${{ env.PACKAGED_OUTPUTPATH }}/*
+          rm -f "$NOTES_FILE"
   build-compile-kernel-via-docker:
     if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'compile-kernel' && inputs.sub_task == 'via-docker' }}
     runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -1258,28 +1288,35 @@ jobs:
           kernel_toolchain: ${{ inputs.kernel_toolchain }}
           ccache_clear: ${{ inputs.ccache_clear }}
       - name: Upload Kernel to Release
-        uses: jfy9606/upload-to-releases@main
         if: ${{ env.PACKAGED_STATUS }} == 'success' && !cancelled()
-        with:
-          tag: kernel_stable
-          artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/*
-          repo: ${{ env.TARGET_REPO }}
-          allow_updates: true
-          remove_artifacts: false
-          replaces_artifacts: true
-          make_latest: false
-          gh_token: ${{ secrets.RELEASE_TOKEN }}
-          body: |
-            - These are Mainline LTS(Long Term Support) kernels that provide `stable` support for Armbian.
-            - It works with most `Amlogic`, `Rockchip`, and `Allwinner` devices. For specific details, please refer to the instructions on the homepage of repository.
-            - Dedicated BSP kernels for other Rockchip and Allwinner devices can be downloaded from the [ophub/kernel](https://github.com/ophub/kernel) repository.
-            - 这些是主线 LTS（长期支持）内核，为 Armbian 提供`稳定`的支持。
-            - 适用于 `amlogic`，`rockchip`，`allwinner` 的大部分设备，具体可以参考仓库首页的说明。
-            - 其他的 Rockchip 和 Allwinner 设备专用 BSP 内核可以在 [ophub/kernel](https://github.com/ophub/kernel) 仓库里下载使用。
-
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          TAG="kernel_stable"
+          RELEASE_REPO="${{ env.TARGET_REPO }}"
+          NOTES_FILE="$(mktemp)"
+          cat > "$NOTES_FILE" <<'EOF'
+          - These are Mainline LTS(Long Term Support) kernels that provide `stable` support for Armbian.
+          - It works with most `Amlogic`, `Rockchip`, and `Allwinner` devices. For specific details, please refer to the instructions on the homepage of repository.
+          - Dedicated BSP kernels for other Rockchip and Allwinner devices can be downloaded from the [ophub/kernel](https://github.com/ophub/kernel) repository.
+          - 这些是主线 LTS（长期支持）内核，为 Armbian 提供`稳定`的支持。
+          - 适用于 `amlogic`，`rockchip`，`allwinner` 的大部分设备，具体可以参考仓库首页的说明。
+          - 其他的 Rockchip 和 Allwinner 设备专用 BSP 内核可以在 [ophub/kernel](https://github.com/ophub/kernel) 仓库里下载使用。
+          EOF
+          echo "" >> "$NOTES_FILE"
+          echo "Built from commit ${{ github.sha }}" >> "$NOTES_FILE"
+          gh release delete "$TAG" --repo "$RELEASE_REPO" --cleanup-tag --yes 2>/dev/null || true
+          gh release create "$TAG" --repo "$RELEASE_REPO" \
+            --title "$TAG" \
+            --notes-file "$NOTES_FILE" \
+            --latest=false \
+            ${{ env.PACKAGED_OUTPUTPATH }}/*
+          rm -f "$NOTES_FILE"
   build-compile-kernel-via-host:
     if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'compile-kernel' && inputs.sub_task == 'via-host' }}
     runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
     env:
       CCACHE_DIR: /builder/ccache
     steps:
@@ -1381,31 +1418,36 @@ jobs:
           kernel_toolchain: ${{ inputs.kernel_toolchain }}
           ccache_clear: ${{ inputs.ccache_clear }}
       - name: Upload Kernel to Release
-        uses: jfy9606/upload-to-releases@main
         if: ${{ env.PACKAGED_STATUS }} == 'success' && !cancelled()
-        with:
-          tag: kernel_stable
-          artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/*
-          repo: ${{ env.TARGET_REPO }}
-          allow_updates: true
-          remove_artifacts: false
-          replaces_artifacts: true
-          make_latest: false
-          gh_token: ${{ secrets.RELEASE_TOKEN }}
-          body: |
-            - These are Mainline LTS(Long Term Support) kernels that provide `stable` support for Armbian.
-            - It works with most `Amlogic`, `Rockchip`, and `Allwinner` devices. For specific details, please refer to the instructions on the homepage of repository.
-            - Dedicated BSP kernels for other Rockchip and Allwinner devices can be downloaded from the [ophub/kernel](https://github.com/ophub/kernel) repository.
-            - 这些是主线 LTS（长期支持）内核，为 Armbian 提供`稳定`的支持。
-            - 适用于 `amlogic`，`rockchip`，`allwinner` 的大部分设备，具体可以参考仓库首页的说明。
-            - 其他的 Rockchip 和 Allwinner 设备专用 BSP 内核可以在 [ophub/kernel](https://github.com/ophub/kernel) 仓库里下载使用。
-
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          TAG="kernel_stable"
+          RELEASE_REPO="${{ env.TARGET_REPO }}"
+          NOTES_FILE="$(mktemp)"
+          cat > "$NOTES_FILE" <<'EOF'
+          - These are Mainline LTS(Long Term Support) kernels that provide `stable` support for Armbian.
+          - It works with most `Amlogic`, `Rockchip`, and `Allwinner` devices. For specific details, please refer to the instructions on the homepage of repository.
+          - Dedicated BSP kernels for other Rockchip and Allwinner devices can be downloaded from the [ophub/kernel](https://github.com/ophub/kernel) repository.
+          - 这些是主线 LTS（长期支持）内核，为 Armbian 提供`稳定`的支持。
+          - 适用于 `amlogic`，`rockchip`，`allwinner` 的大部分设备，具体可以参考仓库首页的说明。
+          - 其他的 Rockchip 和 Allwinner 设备专用 BSP 内核可以在 [ophub/kernel](https://github.com/ophub/kernel) 仓库里下载使用。
+          EOF
+          echo "" >> "$NOTES_FILE"
+          echo "Built from commit ${{ github.sha }}" >> "$NOTES_FILE"
+          gh release delete "$TAG" --repo "$RELEASE_REPO" --cleanup-tag --yes 2>/dev/null || true
+          gh release create "$TAG" --repo "$RELEASE_REPO" \
+            --title "$TAG" \
+            --notes-file "$NOTES_FILE" \
+            --latest=false \
+            ${{ env.PACKAGED_OUTPUTPATH }}/*
+          rm -f "$NOTES_FILE"
   build-docker:
     needs: [setup-docker]
     if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'docker' }}
     runs-on: ubuntu-26.04-arm
     permissions:
-      contents: write
+      contents: read
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.setup-docker.outputs.matrix) }}
@@ -1462,26 +1504,32 @@ jobs:
           ${MAKE_DOCKER_SH} ${{ matrix.branch }} arm64
           echo "status=success" >> ${GITHUB_OUTPUT}
       - name: Upload rebuilt images to Release
-        uses: jfy9606/upload-to-releases@main
         if: ${{ steps.make.outputs.status == 'success' && !cancelled() }}
-        with:
-          tag: ${{ steps.down.outputs.build_tag }}
-          artifacts: out/*.tar.gz
-          repo: ${{ env.TARGET_REPO }}
-          allow_updates: true
-          remove_artifacts: false
-          replaces_artifacts: true
-          make_latest: true
-          gh_token: ${{ secrets.RELEASE_TOKEN }}
-          body: |
-            ### Armbian Image Information
-            - Default username: `root`
-            - Default password: `1234`
-            - Install command: `armbian-install`
-            - Update command: `armbian-update`
-            ### Applicable Platform
-            - 🐧 `arm64`
-            - 🐋 Docker image: https://hub.docker.com/u/ophub
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          TAG="${{ steps.down.outputs.build_tag }}"
+          RELEASE_REPO="${{ env.TARGET_REPO }}"
+          NOTES_FILE="$(mktemp)"
+          cat > "$NOTES_FILE" <<'EOF'
+          ### Armbian Image Information
+          - Default username: `root`
+          - Default password: `1234`
+          - Install command: `armbian-install`
+          - Update command: `armbian-update`
+          ### Applicable Platform
+          - 🐧 `arm64`
+          - 🐋 Docker image: https://hub.docker.com/u/ophub
+          EOF
+          echo "" >> "$NOTES_FILE"
+          echo "Built from commit ${{ github.sha }}" >> "$NOTES_FILE"
+          gh release delete "$TAG" --repo "$RELEASE_REPO" --cleanup-tag --yes 2>/dev/null || true
+          gh release create "$TAG" --repo "$RELEASE_REPO" \
+            --title "$TAG" \
+            --notes-file "$NOTES_FILE" \
+            --latest \
+            out/*.tar.gz
+          rm -f "$NOTES_FILE"
       - name: Login to Docker Hub
         id: login
         if: ${{ steps.make.outputs.status == 'success' && !cancelled() }}
