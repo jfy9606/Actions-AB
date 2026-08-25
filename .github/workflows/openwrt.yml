@@ -1,9 +1,9 @@
 #==========================================================================
-# Description: Build OpenWrt (Actions-AB) - merged from 6 source workflows
+# Description: Build OpenWrt - merged from 6 source workflows
 # Target repo: jfy9606/amlogic-s9xxx-openwrt (private)
 #==========================================================================
 
-name: "Build OpenWrt (Actions-AB)"
+name: Build OpenWrt
 
 on:
   repository_dispatch:

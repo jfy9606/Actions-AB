@@ -1,9 +1,9 @@
 #==========================================================================
-# Description: Compile Kernel (Actions-AB) - merged from 4 source workflows
+# Description: Compile Kernel - merged from 4 source workflows
 # Target repo: jfy9606/amlogic-s9xxx-kernel (private)
 #==========================================================================
 
-name: "Compile Kernel (Actions-AB)"
+name: Compile Kernel
 
 on:
   repository_dispatch:

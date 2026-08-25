@@ -1,9 +1,9 @@
 #==========================================================================
-# Description: Build Armbian (Actions-AB) - merged from 8 source workflows
+# Description: Build Armbian - merged from 8 source workflows
 # Target repo: jfy9606/amlogic-s9xxx-armbian (private)
 #==========================================================================
 
-name: "Build Armbian (Actions-AB)"
+name: Build Armbian
 
 on:
   repository_dispatch:
