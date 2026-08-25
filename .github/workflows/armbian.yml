@@ -1,0 +1,1505 @@
+#==========================================================================
+# Description: Build Armbian (Actions-AB) - merged from 8 source workflows
+# Target repo: jfy9606/amlogic-s9xxx-armbian (private)
+#==========================================================================
+
+name: Build Armbian (Actions-AB)
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: "Select build type"
+        required: true
+        type: choice
+        options:
+          - from-source
+          - from-official
+          - from-release
+          - compile-kernel
+          - docker
+      sub_task:
+        description: "Select sub task (from-source: arm64/x86, compile-kernel: default/via-docker/via-host)"
+        required: false
+        default: "arm64"
+        type: choice
+        options:
+          - arm64
+          - x86
+          - default
+          - via-docker
+          - via-host
+      set_release:
+        description: "Select OS Release."
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - all
+          - trixie
+          - bookworm
+          - resolute
+          - noble
+      armbian_board:
+        description: "Select device board."
+        required: false
+        default: "amlogic"
+        type: choice
+        options:
+          - allwinner
+          - amlogic
+          - rockchip50
+          - rockchip50_100
+          - rockchip100_150
+          - first50
+          - range50_100
+          - range100_150
+          - last50
+          - a311d-oes_s922x-oes-plus_wxy-oect
+          - nsy-g16-plus_nsy-g68-plus_bdy-g18-pro_bdy-g98
+          - s905d_s905x3_s912_s922x-ct2000
+          - a311d
+          - a311d-oes
+          - alark35-3500
+          - anas3035
+          - aio-3399b
+          - aio-3399c
+          - aio-3399c-ai
+          - bdkj-bd-one
+          - bdy-g18-pro
+          - bdy-g98
+          - beikeyun
+          - boca-tcn100
+          - boca-tcn200
+          - bt-100m
+          - bt-1000m
+          - cd1000
+          - chainedbox
+          - cm3588-nas
+          - crrc
+          - dc-a588
+          - dg3399
+          - dg-nas-lite
+          - dg-tn3568
+          - dlfr100
+          - e20c
+          - e25
+          - eaidk-610
+          - easepi-a2
+          - easepi-r2
+          - elfboard-elf2
+          - emb3531
+          - fine3399
+          - firefly-itx-3588j
+          - firefly-jd4
+          - firefly-rk3399
+          - fmx1-pro
+          - fmx1-pro-b
+          - gea-6319
+          - gzpeite-p01
+          - h28k
+          - h618-ai-douhe
+          - h618-devboard
+          - h66k
+          - h68k
+          - h69k
+          - h88k
+          - h88k-v3
+          - h96-max-m2
+          - hk1-rbox-k8s
+          - houzzkit-f1
+          - hs530r
+          - ht2
+          - hugsun-x99
+          - indiedroid-nova
+          - ipc-r
+          - jp-tvbox
+          - king3399
+          - kylin3399
+          - lckfb-tspi
+          - lckfb-tspi-3m
+          - leez
+          - lubancat-1
+          - lubancat-2
+          - lubancat-3
+          - lubancat-4
+          - lx-r3s
+          - lyt-t68m
+          - lz-d3568
+          - lz-d3588
+          - lz-k3568
+          - md1000
+          - mrkaio-m68s
+          - nanopc-t4
+          - nanopc-t6
+          - nanopi-m5
+          - nanopi-r5c
+          - nanopi-r5s
+          - nanopi-som
+          - nsy-g16-plus
+          - nsy-g68-plus
+          - orangepi-3b
+          - orangepi-5-plus
+          - orangepi-5-pro
+          - orangepi-5-ultra
+          - orangepi-5b
+          - orangepi-zero3
+          - painet-p3
+          - painet-p5
+          - panther-x2
+          - photonicat
+          - r66s
+          - r68s
+          - recomputer-rk3576-devkit
+          - renegade-rk3328
+          - rk3318-box
+          - roceos-k40pro
+          - rock-5-itx
+          - rock-3b
+          - rock-3c
+          - rock5b
+          - rock5c
+          - ruisen-box
+          - s905
+          - s905-beelink-mini
+          - s905-mxqpro-plus
+          - s905d
+          - s905d-ki-pro
+          - s905d-sml5442tw
+          - s905d3-khadas-vim3l
+          - s905l
+          - s905l-aurora-1s
+          - s905l-b860av21u
+          - s905l-mg101
+          - s905l2
+          - s905l2-e900v21e
+          - s905l2-wojia
+          - s905l3
+          - s905l3-cm211
+          - s905l3-unt400g1
+          - s905l3-unt402a
+          - s905l3a
+          - s905l3a-cm311
+          - s905l3a-m401a
+          - s905l3b
+          - s905l3b-e900v21d
+          - s905l3b-e900v22d
+          - s905l3b-e900v22e
+          - s905l3b-ip103h
+          - s905l3b-rg020et-ca
+          - s905l3b-unt403a
+          - s905lb-ipbs9505
+          - s905lb-q96-mini
+          - s905lb-r3300l
+          - s905mb
+          - s905w
+          - s905w-w95
+          - s905w-x96-mini
+          - s905w-x96w
+          - s905x
+          - s905x-b860h
+          - s905x-nexbox-a95x
+          - s905x-t95
+          - s905x-tbee
+          - s905x-tx9
+          - s905x2
+          - s905x2-km3
+          - s905x2-x96max-2g
+          - s905x2-hg680fj
+          - s905x3
+          - s905x3-2101
+          - s905x3-a100
+          - s905x3-a95xf3
+          - s905x3-a95xf3-gb
+          - s905x3-b
+          - s905x3-h96max
+          - s905x3-hk1
+          - s905x3-ip1001m
+          - s905x3-q1
+          - s905x3-q2
+          - s905x3-tox1
+          - s905x3-tx3
+          - s905x3-tx3-bz
+          - s905x3-ugoosx3
+          - s905x3-whale
+          - s905x3-x88-pro-x3
+          - s905x3-x96air
+          - s905x3-x96air-gb
+          - s905x3-x96max
+          - s912
+          - s912-h96pro-plus
+          - s912-m8s-pro
+          - s912-nexbox-a1
+          - s912-nexbox-a2
+          - s912-onecloudpro
+          - s912-phicomm-t1
+          - s912-t95z-plus
+          - s912-tx8-max
+          - s912-tx9-pro-2g
+          - s912-tx9-pro-3g
+          - s912-x92
+          - s912-zyxq-fake
+          - s922x
+          - s922x-ct2000
+          - s922x-gtking
+          - s922x-gtkingpro-h
+          - s922x-odroid-n2
+          - s922x-oes-plus
+          - s922x-reva
+          - s922x-ugoos-am6
+          - seewo-sv21
+          - seewo-sv50
+          - smart-am40
+          - smart-am60
+          - station-m1
+          - station-m2
+          - station-p2
+          - sv-33a6x
+          - sv-33a6x-vpu
+          - swan1-w28
+          - sw799
+          - taram
+          - tanix-tx6
+          - tb-ls3399
+          - tn3399
+          - tpm312
+          - tqc-a01
+          - tvi3315a
+          - vontar-h618
+          - vplus
+          - wocyber-a3
+          - wxy-oect
+          - wxy-oect-mod
+          - x88pro13
+          - x88pro20
+          - x98h
+          - xiaobao
+          - youyeetoo-r1-v3
+          - youyeetoo-yy3568
+          - youyeetoo-yy3588
+          - yskj
+          - zcube1-max
+          - zk-r39a
+          - zysj
+      armbian_kernel:
+        description: "Select kernel version."
+        required: false
+        default: "6.12.y_6.18.y"
+        type: choice
+        options:
+          - 5.10.y
+          - 5.15.y
+          - 6.1.y
+          - 6.6.y
+          - 6.12.y
+          - 6.18.y
+          - 5.10.y_5.15.y
+          - 6.1.y_6.6.y
+          - 6.12.y_6.18.y
+          - 6.1.y_6.12.y
+          - 6.1.y_6.18.y
+      kernel_repo:
+        description: "Set the kernel repository."
+        required: false
+        default: "jfy9606/amlogic-s9xxx-kernel"
+        type: choice
+        options:
+          - ophub/kernel
+          - jfy9606/amlogic-s9xxx-kernel
+          - jfy9606/amlogic-s9xxx-armbian
+      kernel_usage:
+        description: "Set the tags of the stable kernel."
+        required: false
+        default: "stable"
+        type: choice
+        options:
+          - stable
+          - flippy
+          - beta
+      armbian_fstype:
+        description: "Select armbian rootfs type."
+        required: false
+        default: "ext4"
+        type: choice
+        options:
+          - ext4
+          - btrfs
+      armbian_edition:
+        description: "Select image edition type."
+        required: false
+        default: "server"
+        type: choice
+        options:
+          - server
+          - desktop
+          - beta
+      builder_name:
+        description: "Set Armbian builder signature."
+        required: false
+        default: "ophub"
+        type: choice
+        options:
+          - ophub
+          - angel
+          - jfy9606
+          - yourname
+      config_board:
+        description: "Set the base Armbian board name."
+        required: false
+        default: "odroidn2"
+      auto_kernel:
+        description: "Auto use the latest kernel."
+        required: false
+        default: true
+        type: boolean
+      armbian_url:
+        description: "Set the Armbian source image URL."
+        required: false
+        default: ""
+      kernel_source:
+        description: "Select the kernel source"
+        required: false
+        default: "ophub"
+        type: choice
+        options:
+          - unifreq
+          - ophub
+      kernel_version:
+        description: "Select kernel version"
+        required: false
+        default: "6.18.y"
+        type: choice
+        options:
+          - all
+          - 5.10.y
+          - 5.15.y
+          - 6.1.y
+          - 6.6.y
+          - 6.12.y
+          - 6.18.y
+      kernel_auto:
+        description: "Auto use the latest kernel"
+        required: false
+        default: true
+        type: boolean
+      delete_source:
+        description: "Delete source after compilation"
+        required: false
+        default: true
+        type: boolean
+      kernel_package:
+        description: "Select compile package list"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - all
+          - dtbs
+      kernel_toolchain:
+        description: "Select the compilation toolchain"
+        required: false
+        default: "gcc"
+        type: choice
+        options:
+          - clang
+          - gcc
+          - gcc-15.3
+          - gcc-15.2
+          - gcc-14.3
+          - gcc-14.2
+      ccache_clear:
+        description: "Set whether to clear the cache"
+        required: false
+        default: false
+        type: boolean
+      docker_image:
+        description: "Select Armbian docker image"
+        required: false
+        default: "resolute"
+        type: choice
+        options:
+          - trixie
+          - bookworm
+          - resolute
+          - noble
+          - jammy
+      kernel_sign:
+        description: "Set the kernel custom signature"
+        required: false
+        default: "-ophub"
+        type: choice
+        options:
+          - -ophub
+          - -jfy9606
+          - -yourname
+      kernel_config:
+        description: "Set the path of kernel .config"
+        required: false
+        default: "false"
+        type: string
+      kernel_patch:
+        description: "Set the directory for kernel patches"
+        required: false
+        default: "false"
+        type: string
+      auto_patch:
+        description: "Set whether to use kernel patches"
+        required: false
+        default: false
+        type: boolean
+      compress_format:
+        description: "Set the initrd compression format"
+        required: false
+        default: "xz"
+        type: choice
+        options:
+          - xz
+          - gzip
+          - zstd
+          - lzma
+      silent_log:
+        description: "Set whether to use silent log output"
+        required: false
+        default: false
+        type: boolean
+      source_branch:
+        description: "Select the source branch"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - all
+          - trixie
+          - bookworm
+          - resolute
+          - noble
+      docker_img:
+        description: "Set the docker image"
+        required: false
+        default: "ophub/armbian"
+        type: choice
+        options:
+          - ophub/armbian
+      publish_docker:
+        description: "Publish Docker image"
+        required: false
+        default: "ophub/armbian"
+        type: choice
+        options:
+          - ophub/armbian
+          - none
+
+env:
+  TZ: Etc/UTC
+  ROOTFS_SCRIPT: compile-kernel/tools/script/docker/build_armbian_rootfs_file.sh
+  MAKE_DOCKER_SH: compile-kernel/tools/script/docker/build_armbian_docker_image.sh
+  TARGET_REPO: jfy9606/amlogic-s9xxx-armbian
+
+jobs:
+  setup-from-source:
+    if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'from-source' }}
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Set build matrix based on set_release input
+        id: set-matrix
+        run: |
+          if [[ "${{ inputs.set_release }}" == "all" ]]; then
+            MATRIX='{"include":[{"release":"trixie"},{"release":"bookworm"},{"release":"resolute"},{"release":"noble"}]}'
+          else
+            MATRIX='{"include":[{"release":"${{ inputs.set_release }}"}]}'
+          fi
+          echo "matrix=${MATRIX}" >> "${GITHUB_OUTPUT}"
+
+  setup-from-release:
+    if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'from-release' }}
+    runs-on: ubuntu-26.04-arm
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Set build matrix based on set_release input
+        id: set-matrix
+        run: |
+          if [[ "${{ inputs.set_release }}" == "all" ]]; then
+            MATRIX='{"include":[{"release":"trixie"},{"release":"bookworm"},{"release":"resolute"},{"release":"noble"}]}'
+          else
+            MATRIX='{"include":[{"release":"${{ inputs.set_release }}"}]}'
+          fi
+          echo "matrix=${MATRIX}" >> "${GITHUB_OUTPUT}"
+
+  setup-compile-kernel:
+    if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'compile-kernel' && inputs.sub_task == 'default' }}
+    runs-on: ubuntu-26.04-arm
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Set build matrix based on kernel_version input
+        id: set-matrix
+        run: |
+          if [[ "${{ inputs.kernel_version }}" == "all" ]]; then
+            MATRIX='{"include":[{"kernel_version":"5.10.y"},{"kernel_version":"5.15.y"},{"kernel_version":"6.1.y"},{"kernel_version":"6.6.y"},{"kernel_version":"6.12.y"},{"kernel_version":"6.18.y"}]}'
+          else
+            MATRIX='{"include":[{"kernel_version":"${{ inputs.kernel_version }}"}]}'
+          fi
+          echo "matrix=${MATRIX}" >> "${GITHUB_OUTPUT}"
+
+  setup-docker:
+    if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'docker' }}
+    runs-on: ubuntu-26.04-arm
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Set build matrix based on source_branch input
+        id: set-matrix
+        run: |
+          if [[ "${{ inputs.source_branch }}" == "all" ]]; then
+            MATRIX='{"include":[{"branch":"trixie"},{"branch":"bookworm"},{"branch":"resolute"},{"branch":"noble"}]}'
+          else
+            MATRIX='{"include":[{"branch":"${{ inputs.source_branch }}"}]}'
+          fi
+          echo "matrix=${MATRIX}" >> "${GITHUB_OUTPUT}"
+
+  build-from-source:
+    needs: [setup-from-source]
+    if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'from-source' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.setup-from-source.outputs.matrix) }}
+    name: build-from-source-${{ matrix.release }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Checkout private armbian repo
+        uses: actions/checkout@v6
+        with:
+          repository: jfy9606/amlogic-s9xxx-armbian
+          ref: main
+          token: ${{ secrets.REPO_TOKEN }}
+          path: ./.github/actions/amlogic-s9xxx-armbian
+      - name: Initialize the build environment
+        id: init
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          docker rmi -f $(docker images -q) 2>/dev/null || true
+          [[ -n "${AGENT_TOOLSDIRECTORY}" ]] && sudo rm -rf "${AGENT_TOOLSDIRECTORY}"
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android 2>/dev/null
+          sudo swapoff -a
+          sudo rm -f /swapfile /mnt/swapfile
+          sudo apt-get -y update
+          sudo apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
+          sudo apt-get -y install $(curl -fsSL https://ophub.org/ubuntu2404-build-armbian-depends)
+          sudo systemctl daemon-reload
+          sudo apt-get -y autoremove --purge
+          sudo apt-get clean
+          sudo sed -i '/NVM_DIR/d;/skel/d' /root/{.bashrc,.profile}
+          sudo rm -rf ~/{.cargo,.dotnet,.rustup}
+          sudo timedatectl set-timezone "${TZ:-Etc/UTC}"
+          sudo ntpdate ntp.ubuntu.com 0.pool.ntp.org || true
+          sudo timedatectl set-ntp true
+          date -u
+          timedatectl status || true
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Create virtual disk for extended storage
+        id: disk
+        run: |
+          root_avail=$(df --block-size=1G / | tail -1 | awk '{print $4}')
+          root_size=$(( root_avail - 4 ))
+          [[ "${root_size}" -gt 0 ]] || { echo "Error: Insufficient space on /: ${root_avail}G available"; exit 1; }
+          sudo truncate -s "${root_size}"G /root.img
+          build_dev=$(sudo losetup --find --show /root.img)
+          echo "Using /: ${root_size}G"
+          sudo mkfs.xfs -f -i sparse=0 -b size=4096 "${build_dev}"
+          sudo mkdir -p /builder
+          sudo mount "${build_dev}" /builder
+          sudo chown -R runner:runner /builder
+          df -Th
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Download Armbian source code
+        id: down
+        working-directory: /builder
+        if: ${{ steps.init.outputs.status == 'success' && !cancelled() }}
+        run: |
+          df -hT ${PWD}
+          git clone -q --single-branch --depth=1 --branch=main https://github.com/armbian/build.git build
+          ln -sf /builder/build ${{ github.workspace }}/build
+          ln -sf /builder/build /home/runner/work/_actions/jfy9606/amlogic-s9xxx-armbian/main/build
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Compile Armbian arm64 [ ${{ matrix.release }} ]
+        id: compile-arm64
+        working-directory: /builder
+        if: ${{ steps.down.outputs.status == 'success' && inputs.sub_task == 'arm64' && !cancelled() }}
+        run: |
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes 2>/dev/null || true
+          config_board="odroidn2"
+          cd build/
+              ./compile.sh RELEASE=${{ matrix.release }} BOARD=${config_board} BRANCH=current BUILD_MINIMAL=no \
+                           BUILD_ONLY=default HOST=armbian BUILD_DESKTOP=no EXPERT=yes KERNEL_CONFIGURE=no \
+                           COMPRESS_OUTPUTIMAGE="sha" SHARE_LOG=yes
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Compile Armbian x86 [ ${{ matrix.release }} ]
+        id: compile-x86
+        working-directory: /builder
+        if: ${{ steps.down.outputs.status == 'success' && inputs.sub_task == 'x86' && !cancelled() }}
+        run: |
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes 2>/dev/null || true
+          cd build/
+              ./compile.sh RELEASE=${{ matrix.release }} BOARD=uefi-x86 BRANCH=current BUILD_MINIMAL=no \
+                           BUILD_ONLY=default HOST=armbian BUILD_DESKTOP=no EXPERT=yes KERNEL_CONFIGURE=no \
+                           COMPRESS_OUTPUTIMAGE="sha" SHARE_LOG=yes
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Organize output files [arm64]
+        id: clean-arm64
+        if: ${{ steps.compile-arm64.outputs.status == 'success' && !cancelled() }}
+        run: |
+          chmod +x ${ROOTFS_SCRIPT}
+          ${ROOTFS_SCRIPT} -v ${{ matrix.release }} -s true -c true -k true -p arm64
+          cd build/
+          rm -rf $(ls . | grep -v "^output$" | xargs) 2>/dev/null
+          df -hT ${PWD}
+          echo "build_tag=Armbian_${{ matrix.release }}_arm64_${{ inputs.armbian_edition }}_$(date +"%Y.%m")" >> ${GITHUB_ENV}
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Organize output files [x86]
+        id: clean-x86
+        if: ${{ steps.compile-x86.outputs.status == 'success' && !cancelled() }}
+        run: |
+          chmod +x ${ROOTFS_SCRIPT}
+          ${ROOTFS_SCRIPT} -v ${{ matrix.release }} -s true -c true -k false -p amd64
+          [[ -d "armbian" ]] || mkdir armbian
+          cp -af build/output/images/* armbian/
+          rm -rf build
+          df -hT ${PWD}
+          echo "build_tag=Armbian_amd64_server_$(date +"%Y.%m")" >> ${GITHUB_ENV}
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Build the Docker image [x86]
+        id: makedocker
+        if: ${{ steps.clean-x86.outputs.status == 'success' && inputs.publish_docker != 'none' && !cancelled() }}
+        run: |
+          chmod +x ${MAKE_DOCKER_SH}
+          ${MAKE_DOCKER_SH} ${{ matrix.release }} amd64
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Upload Armbian image to Release [arm64]
+        uses: jfy9606/upload-to-releases@main
+        if: ${{ steps.clean-arm64.outputs.status == 'success' && !cancelled() }}
+        with:
+          tag: ${{ env.build_tag }}
+          artifacts: build/output/images/*
+          repo: ${{ env.TARGET_REPO }}
+          allow_updates: true
+          remove_artifacts: false
+          replaces_artifacts: true
+          make_latest: true
+          gh_token: ${{ secrets.RELEASE_TOKEN }}
+      - name: Rebuild Armbian for target boards [arm64]
+        uses: ./.github/actions/amlogic-s9xxx-armbian
+        if: ${{ steps.clean-arm64.outputs.status == 'success' && !cancelled() }}
+        with:
+          build_target: armbian
+          armbian_path: build/output/images/*.img.gz
+          armbian_board: ${{ inputs.armbian_board }}
+          armbian_kernel: ${{ inputs.armbian_kernel }}
+          auto_kernel: true
+          kernel_repo: ${{ inputs.kernel_repo }}
+          kernel_usage: ${{ inputs.kernel_usage }}
+          armbian_fstype: ${{ inputs.armbian_fstype }}
+          builder_name: ${{ inputs.builder_name }}
+      - name: Upload rebuilt images to Release [arm64]
+        uses: jfy9606/upload-to-releases@main
+        if: ${{ env.PACKAGED_STATUS == 'success' && inputs.sub_task == 'arm64' && !cancelled() }}
+        with:
+          tag: ${{ env.build_tag }}
+          artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/*
+          repo: ${{ env.TARGET_REPO }}
+          allow_updates: true
+          remove_artifacts: false
+          replaces_artifacts: true
+          make_latest: true
+          gh_token: ${{ secrets.RELEASE_TOKEN }}
+          body: |
+            ### Armbian Image Information
+            - Default username: `root`
+            - Default password: `1234`
+            - Install command: `armbian-install`
+            - Update command: `armbian-update`
+            ### Applicable Platform
+            - 🐧 `arm64`
+            - 🐋 Docker image: https://hub.docker.com/u/ophub
+      - name: Upload Armbian image to Release [x86]
+        uses: jfy9606/upload-to-releases@main
+        if: ${{ steps.clean-x86.outputs.status == 'success' && !cancelled() }}
+        with:
+          tag: ${{ env.build_tag }}
+          artifacts: "armbian/*,out/*"
+          repo: ${{ env.TARGET_REPO }}
+          allow_updates: true
+          remove_artifacts: false
+          replaces_artifacts: true
+          make_latest: false
+          gh_token: ${{ secrets.RELEASE_TOKEN }}
+          body: |
+            ### Armbian Image Information
+            - Default username: `root`
+            - Default password: `1234`
+            ### Applicable Platform
+            - 💻 `amd64(uefi-x86)`
+            - 🐋 Docker image: https://hub.docker.com/u/ophub
+      - name: Login to Docker Hub [x86]
+        id: login
+        if: ${{ steps.makedocker.outputs.status == 'success' && !cancelled() }}
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - name: Load and push image to Docker Hub [x86]
+        id: push
+        if: ${{ steps.makedocker.outputs.status == 'success' && !cancelled() }}
+        run: |
+          offline_image="$(ls out/*.tar.gz 2>/dev/null | head -n 1)"
+          [[ -z "${offline_image}" ]] && echo "Error: No offline image found." && exit 1
+          loaded_image="$(docker load -i "${offline_image}" | grep -oP 'Loaded image: \K.*')"
+          [[ -z "${loaded_image}" ]] && echo "Error: Failed to load Docker image." && exit 1
+          echo "Loaded image: ${loaded_image}"
+          docker tag "${loaded_image}" "${{ inputs.publish_docker }}-${{ matrix.release }}:amd64"
+          docker push "${{ inputs.publish_docker }}-${{ matrix.release }}:amd64"
+          echo "status=success" >> ${GITHUB_OUTPUT}
+
+  build-from-official:
+    if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'from-official' }}
+    runs-on: ubuntu-26.04-arm
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Checkout private armbian repo
+        uses: actions/checkout@v6
+        with:
+          repository: jfy9606/amlogic-s9xxx-armbian
+          ref: main
+          token: ${{ secrets.REPO_TOKEN }}
+          path: ./.github/actions/amlogic-s9xxx-armbian
+      - name: Initialize the build environment
+        id: init
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          docker rmi -f $(docker images -q) 2>/dev/null || true
+          [[ -n "${AGENT_TOOLSDIRECTORY}" ]] && sudo rm -rf "${AGENT_TOOLSDIRECTORY}"
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android 2>/dev/null
+          sudo swapoff -a
+          sudo rm -f /swapfile /mnt/swapfile
+          sudo apt-get -y update
+          sudo apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
+          sudo apt-get -y install $(curl -fsSL https://ophub.org/ubuntu2604-build-armbian-depends)
+          sudo systemctl daemon-reload
+          sudo apt-get -y autoremove --purge
+          sudo apt-get clean
+          sudo sed -i '/NVM_DIR/d;/skel/d' /root/{.bashrc,.profile}
+          sudo rm -rf ~/{.cargo,.dotnet,.rustup}
+          sudo timedatectl set-timezone "${TZ:-Etc/UTC}"
+          sudo ntpdate ntp.ubuntu.com 0.pool.ntp.org || true
+          sudo timedatectl set-ntp true
+          date -u
+          timedatectl status || true
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Create virtual disk for extended storage
+        id: disk
+        run: |
+          root_avail=$(df --block-size=1G / | tail -1 | awk '{print $4}')
+          root_size=$(( root_avail - 4 ))
+          [[ "${root_size}" -gt 0 ]] || { echo "Error: Insufficient space on /: ${root_avail}G available"; exit 1; }
+          sudo truncate -s "${root_size}"G /root.img
+          build_dev=$(sudo losetup --find --show /root.img)
+          echo "Using /: ${root_size}G"
+          sudo mkfs.xfs -f -i sparse=0 -b size=4096 "${build_dev}"
+          sudo mkdir -p /builder
+          sudo mount "${build_dev}" /builder
+          sudo chown -R runner:runner /builder
+          df -Th
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Set Armbian download source
+        id: down
+        working-directory: /builder
+        run: |
+          armbian_url="${{ inputs.armbian_url }}"
+          if  [[ -z "${armbian_url}" ]]; then
+              armbian_site="https://armbian.tnahosting.net/dl/odroidn2/archive/"
+              armbian_name="Armbian.*noble.*.img.xz"
+              armbian_file=$(curl -s "${armbian_site}" | grep -oE "${armbian_name}" | head -n 1)
+              if [[ -n "${armbian_file}" ]]; then
+                  armbian_url="${armbian_site}${armbian_file}"
+              else
+                  echo -e "Error: No valid Armbian image found at: [ ${armbian_site} ]"
+                  exit 1
+              fi
+          fi
+          echo "ARMBIAN_URL=${armbian_url}" >> ${GITHUB_ENV}
+          set_release=""
+          ARR_RELEASE=("resolute" "noble" "trixie" "bookworm")
+          i=1
+          for r in ${ARR_RELEASE[*]}; do
+              if [[ "${armbian_url}" == *"${r}"* ]]; then
+                  set_release="_${r}"
+                  break
+              fi
+              let i++
+          done
+          mkdir -p /builder/build
+          ln -sf /builder/build ${{ github.workspace }}/build
+          ln -sf /builder/build /home/runner/work/_actions/jfy9606/amlogic-s9xxx-armbian/main/build
+          sudo timedatectl set-timezone "${TZ}"
+          echo "build_tag=Armbian${set_release}_arm64_${{ inputs.armbian_edition }}_$(date +"%Y.%m")" >> ${GITHUB_ENV}
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Rebuild Armbian for target boards
+        uses: ./.github/actions/amlogic-s9xxx-armbian
+        if: ${{ env.ARMBIAN_URL != '' && !cancelled() }}
+        with:
+          build_target: armbian
+          armbian_path: ${{ env.ARMBIAN_URL }}
+          armbian_board: ${{ inputs.armbian_board }}
+          armbian_kernel: ${{ inputs.armbian_kernel }}
+          auto_kernel: ${{ inputs.auto_kernel }}
+          kernel_repo: ${{ inputs.kernel_repo }}
+          kernel_usage: ${{ inputs.kernel_usage }}
+          armbian_fstype: ${{ inputs.armbian_fstype }}
+          builder_name: ${{ inputs.builder_name }}
+      - name: Upload Armbian images to Release
+        uses: jfy9606/upload-to-releases@main
+        if: ${{ env.PACKAGED_STATUS == 'success' && !cancelled() }}
+        with:
+          tag: ${{ env.build_tag }}
+          artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/*
+          repo: ${{ env.TARGET_REPO }}
+          allow_updates: true
+          remove_artifacts: false
+          replaces_artifacts: true
+          make_latest: true
+          gh_token: ${{ secrets.RELEASE_TOKEN }}
+          body: |
+            ### Armbian Image Information
+            - Default username: `root`
+            - Default password: `1234`
+            - Install command: `armbian-install`
+            - Update command: `armbian-update`
+            ### Applicable Platform
+            - 🐧 `arm64`
+            - 🐋 Docker image: https://hub.docker.com/u/ophub
+
+  build-from-release:
+    needs: [setup-from-release]
+    if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'from-release' }}
+    runs-on: ubuntu-26.04-arm
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.setup-from-release.outputs.matrix) }}
+    name: build-from-release-${{ matrix.release }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Checkout private armbian repo
+        uses: actions/checkout@v6
+        with:
+          repository: jfy9606/amlogic-s9xxx-armbian
+          ref: main
+          token: ${{ secrets.REPO_TOKEN }}
+          path: ./.github/actions/amlogic-s9xxx-armbian
+      - name: Initialize the build environment
+        id: init
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          docker rmi -f $(docker images -q) 2>/dev/null || true
+          [[ -n "${AGENT_TOOLSDIRECTORY}" ]] && sudo rm -rf "${AGENT_TOOLSDIRECTORY}"
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android 2>/dev/null
+          sudo swapoff -a
+          sudo rm -f /swapfile /mnt/swapfile
+          sudo apt-get -y update
+          sudo apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
+          sudo apt-get -y install $(curl -fsSL https://ophub.org/ubuntu2604-build-armbian-depends)
+          sudo systemctl daemon-reload
+          sudo apt-get -y autoremove --purge
+          sudo apt-get clean
+          sudo sed -i '/NVM_DIR/d;/skel/d' /root/{.bashrc,.profile}
+          sudo rm -rf ~/{.cargo,.dotnet,.rustup}
+          sudo timedatectl set-timezone "${TZ:-Etc/UTC}"
+          sudo ntpdate ntp.ubuntu.com 0.pool.ntp.org || true
+          sudo timedatectl set-ntp true
+          date -u
+          timedatectl status || true
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Create virtual disk for extended storage
+        id: disk
+        run: |
+          root_avail=$(df --block-size=1G / | tail -1 | awk '{print $4}')
+          root_size=$(( root_avail - 4 ))
+          [[ "${root_size}" -gt 0 ]] || { echo "Error: Insufficient space on /: ${root_avail}G available"; exit 1; }
+          sudo truncate -s "${root_size}"G /root.img
+          build_dev=$(sudo losetup --find --show /root.img)
+          echo "Using /: ${root_size}G"
+          sudo mkfs.xfs -f -i sparse=0 -b size=4096 "${build_dev}"
+          sudo mkdir -p /builder
+          sudo mount "${build_dev}" /builder
+          sudo chown -R runner:runner /builder
+          df -Th
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Download Armbian from Releases
+        id: down
+        working-directory: /builder
+        if: ${{ steps.init.outputs.status == 'success' && !cancelled() }}
+        run: |
+          armbian_buildpath="build/output/images"
+          [[ -d "${armbian_buildpath}" ]] || mkdir -p "${armbian_buildpath}"
+          ln -sf /builder/build ${{ github.workspace }}/build
+          ln -sf /builder/build /home/runner/work/_actions/jfy9606/amlogic-s9xxx-armbian/main/build
+          latest_version=$(curl -s \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${{ secrets.REPO_TOKEN }}" \
+              https://api.github.com/repos/jfy9606/amlogic-s9xxx-armbian/releases?per_page=20 | \
+              jq -r --arg RTK "Armbian_${{ matrix.release }}_arm64_" \
+              --arg BOARD "-trunk_" \
+              '[.[] | select(.tag_name | contains($RTK))] |
+              map(.assets[] | select(.name | contains($BOARD) and endswith(".img.gz"))) |
+              sort_by(.updated_at) |
+              reverse |
+              .[0] |
+              {data: .updated_at, url: .url, name: .name}')
+          [[ -z "${latest_version}" || "${latest_version}" == "null" ]] && {
+              echo "Error: Failed to resolve Armbian image download URL."
+              exit 1
+          }
+          latest_url="$(echo ${latest_version} | jq -r '.url')"
+          armbian_filename="$(echo ${latest_version} | jq -r '.name')"
+          echo "Downloading: ${armbian_filename}"
+          curl -fsSL \
+               -H "Authorization: Bearer ${{ secrets.REPO_TOKEN }}" \
+               -H "Accept: application/octet-stream" \
+               "${latest_url}" \
+               -o "${armbian_buildpath}/${armbian_filename}"
+          [[ "${?}" -ne "0" ]] && echo "Error: Download failed." && exit 1
+          echo "build_tag=Armbian_${{ matrix.release }}_arm64_${{ inputs.armbian_edition }}_$(date +"%Y.%m")" >> ${GITHUB_ENV}
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Rebuild Armbian [ ${{ matrix.release }} ]
+        uses: ./.github/actions/amlogic-s9xxx-armbian
+        if: ${{ steps.down.outputs.status == 'success' && !cancelled() }}
+        with:
+          build_target: armbian
+          armbian_path: build/output/images/*.img.gz
+          armbian_board: ${{ inputs.armbian_board }}
+          armbian_kernel: ${{ inputs.armbian_kernel }}
+          auto_kernel: ${{ inputs.auto_kernel }}
+          kernel_repo: ${{ inputs.kernel_repo }}
+          kernel_usage: ${{ inputs.kernel_usage }}
+          armbian_fstype: ${{ inputs.armbian_fstype }}
+          builder_name: ${{ inputs.builder_name }}
+      - name: Upload Armbian images to Release
+        uses: jfy9606/upload-to-releases@main
+        if: ${{ env.PACKAGED_STATUS == 'success' && !cancelled() }}
+        with:
+          tag: ${{ env.build_tag }}
+          artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/*
+          repo: ${{ env.TARGET_REPO }}
+          allow_updates: true
+          remove_artifacts: false
+          replaces_artifacts: true
+          make_latest: true
+          gh_token: ${{ secrets.RELEASE_TOKEN }}
+          body: |
+            ### Armbian Image Information
+            - Default username: `root`
+            - Default password: `1234`
+            - Install command: `armbian-install`
+            - Update command: `armbian-update`
+            ### Applicable Platform
+            - 🐧 `arm64`
+            - 🐋 Docker image: https://hub.docker.com/u/ophub
+
+  build-compile-kernel-default:
+    needs: [setup-compile-kernel]
+    if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'compile-kernel' && inputs.sub_task == 'default' }}
+    runs-on: ubuntu-26.04-arm
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.setup-compile-kernel.outputs.matrix) }}
+    name: compile-kernel-default-${{ matrix.kernel_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Checkout private armbian repo
+        uses: actions/checkout@v6
+        with:
+          repository: jfy9606/amlogic-s9xxx-armbian
+          ref: main
+          token: ${{ secrets.REPO_TOKEN }}
+          path: ./.github/actions/amlogic-s9xxx-armbian
+      - name: Initialize the build environment
+        id: init
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          docker rmi -f $(docker images -q) 2>/dev/null || true
+          [[ -n "${AGENT_TOOLSDIRECTORY}" ]] && sudo rm -rf "${AGENT_TOOLSDIRECTORY}"
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android 2>/dev/null
+          sudo swapoff -a
+          sudo rm -f /swapfile /mnt/swapfile
+          sudo apt-get -y update
+          sudo apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
+          sudo apt-get -y install $(curl -fsSL https://ophub.org/ubuntu2604-build-armbian-depends)
+          sudo systemctl daemon-reload
+          sudo apt-get -y autoremove --purge
+          sudo apt-get clean
+          sudo sed -i '/NVM_DIR/d;/skel/d' /root/{.bashrc,.profile}
+          sudo rm -rf ~/{.cargo,.dotnet,.rustup}
+          sudo timedatectl set-timezone "${TZ:-Etc/UTC}"
+          sudo ntpdate ntp.ubuntu.com 0.pool.ntp.org || true
+          sudo timedatectl set-ntp true
+          date -u
+          timedatectl status || true
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Create virtual disk for extended storage
+        id: disk
+        run: |
+          root_avail=$(df --block-size=1G / | tail -1 | awk '{print $4}')
+          root_size=$(( root_avail - 4 ))
+          [[ "${root_size}" -gt 0 ]] || { echo "Error: Insufficient space on /: ${root_avail}G available"; exit 1; }
+          sudo truncate -s "${root_size}"G /root.img
+          build_dev=$(sudo losetup --find --show /root.img)
+          echo "Using /: ${root_size}G"
+          sudo mkfs.xfs -f -i sparse=0 -b size=4096 "${build_dev}"
+          sudo mkdir -p /builder
+          sudo mount "${build_dev}" /builder
+          sudo chown -R runner:runner /builder
+          df -Th
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Get kernel source commit hash
+        id: kernelhash
+        run: |
+          api_url="https://api.github.com/repos/${{ inputs.kernel_source }}/linux-${{ matrix.kernel_version }}/git/ref/heads/main"
+          source_hash=$(curl -fsSL -m 20 \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              ${api_url} |
+              jq -r '.object.sha'
+          )
+          [[ -z "${source_hash}" || "${source_hash}" == "null" ]] && source_hash="${{ github.sha }}"
+          echo "source_hash=${source_hash}" >> ${GITHUB_ENV}
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Cache ccache
+        uses: actions/cache@v5
+        with:
+          path: /builder/ccache
+          key: kernel-${{ inputs.kernel_toolchain }}-${{ matrix.kernel_version }}-${{ env.source_hash }}
+          restore-keys: |
+            kernel-${{ inputs.kernel_toolchain }}-${{ matrix.kernel_version }}-
+      - name: Compile the kernel [ ${{ matrix.kernel_version }} ]
+        uses: ./.github/actions/amlogic-s9xxx-armbian
+        if: ${{ steps.disk.outputs.status == 'success' && !cancelled() }}
+        with:
+          build_target: kernel
+          kernel_source: ${{ inputs.kernel_source }}
+          kernel_version: ${{ matrix.kernel_version }}
+          kernel_auto: ${{ inputs.kernel_auto }}
+          delete_source: ${{ inputs.delete_source }}
+          kernel_package: ${{ inputs.kernel_package }}
+          kernel_sign: ${{ inputs.kernel_sign }}
+          kernel_toolchain: ${{ inputs.kernel_toolchain }}
+          kernel_config: ${{ inputs.kernel_config }}
+          kernel_patch: ${{ inputs.kernel_patch }}
+          auto_patch: ${{ inputs.auto_patch }}
+          compress_format: ${{ inputs.compress_format }}
+          silent_log: ${{ inputs.silent_log }}
+          ccache_clear: ${{ inputs.ccache_clear }}
+          docker_hostpath: /builder
+          docker_image: jfy9606/armbian-${{ inputs.docker_image }}:arm64
+      - name: Upload Kernel to Release
+        uses: jfy9606/upload-to-releases@main
+        if: ${{ env.PACKAGED_STATUS == 'success' && !cancelled() }}
+        with:
+          tag: kernel_stable
+          artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/*
+          repo: ${{ env.TARGET_REPO }}
+          allow_updates: true
+          remove_artifacts: false
+          replaces_artifacts: true
+          make_latest: false
+          gh_token: ${{ secrets.RELEASE_TOKEN }}
+          body: |
+            - These are Mainline LTS(Long Term Support) kernels that provide `stable` support for Armbian and OpenWrt.
+            - It works with most `Amlogic`, `Rockchip`, and `Allwinner` devices. For specific details, please refer to the instructions on the homepage of repository.
+            - Dedicated BSP kernels for other Rockchip and Allwinner devices can be downloaded from the [ophub/kernel](https://github.com/ophub/kernel) repository.
+            - 这些是主线 LTS（长期支持）内核，为 Armbian 和 OpenWrt 提供`稳定`的支持。
+            - 适用于 `amlogic`，`rockchip`，`allwinner` 的大部分设备，具体可以参考仓库首页的说明。
+            - 其他的 Rockchip 和 Allwinner 设备专用 BSP 内核可以在 [ophub/kernel](https://github.com/ophub/kernel) 仓库里下载使用。
+
+  build-compile-kernel-via-docker:
+    if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'compile-kernel' && inputs.sub_task == 'via-docker' }}
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Checkout private armbian repo
+        uses: actions/checkout@v6
+        with:
+          repository: jfy9606/amlogic-s9xxx-armbian
+          ref: main
+          token: ${{ secrets.REPO_TOKEN }}
+          path: ./.github/actions/amlogic-s9xxx-armbian
+      - name: Initialization environment
+        id: init
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          docker rmi -f $(docker images -q) 2>/dev/null || true
+          [[ -n "${AGENT_TOOLSDIRECTORY}" ]] && sudo rm -rf "${AGENT_TOOLSDIRECTORY}"
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android 2>/dev/null
+          sudo swapoff -a
+          sudo rm -f /swapfile /mnt/swapfile
+          sudo -E apt-get -y update
+          sudo -E apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
+          sudo -E apt-get -y install $(curl -fsSL https://ophub.org/ubuntu2404-build-armbian-depends)
+          sudo -E systemctl daemon-reload
+          sudo -E apt-get -y autoremove --purge
+          sudo -E apt-get clean
+          sudo sed -i '/NVM_DIR/d;/skel/d' /root/{.bashrc,.profile}
+          sudo rm -rf ~/{.cargo,.dotnet,.rustup}
+          sudo -E timedatectl set-timezone "${TZ:-Etc/UTC}"
+          sudo -E ntpdate ntp.ubuntu.com 0.pool.ntp.org || true
+          sudo -E timedatectl set-ntp true
+          date -u
+          timedatectl status || true
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Create simulated physical disk
+        id: disk
+        run: |
+          mnt_size=$(expr $(df -h /mnt | tail -1 | awk '{print $4}' | sed 's/[[:alpha:]]//g' | sed 's/\..*//') - 1)
+          root_size=$(expr $(df -h / | tail -1 | awk '{print $4}' | sed 's/[[:alpha:]]//g' | sed 's/\..*//') - 4)
+          sudo truncate -s "${mnt_size}"G /mnt/mnt.img
+          sudo truncate -s "${root_size}"G /root.img
+          sudo losetup /dev/loop6 /mnt/mnt.img
+          sudo losetup /dev/loop7 /root.img
+          sudo pvcreate /dev/loop6
+          sudo pvcreate /dev/loop7
+          sudo vgcreate github /dev/loop6 /dev/loop7
+          sudo lvcreate -n runner -l 100%FREE github
+          sudo mkfs.xfs -f -i sparse=0 -b size=4096 /dev/github/runner
+          sudo mkdir -p /builder
+          sudo mount /dev/github/runner /builder
+          sudo chown -R runner:runner /builder
+          df -Th
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Install Docker
+        id: install
+        working-directory: /builder
+        if: ${{ steps.disk.outputs.status }} == 'success' && !cancelled()
+        run: |
+          df -hT ${PWD}
+          curl -fsSL https://get.docker.com | sh
+          sudo usermod -aG docker $USER
+          sudo newgrp docker
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Pull Docker Image [ ${{ inputs.docker_image }} ]
+        id: pull
+        working-directory: /builder
+        if: ${{ steps.install.outputs.status }} == 'success' && !cancelled()
+        run: |
+          mkdir -p /builder/{compile-kernel/{kernel,output},ccache}
+          ln -sf /builder/compile-kernel/kernel /home/runner/work/_actions/jfy9606/amlogic-s9xxx-armbian/main/compile-kernel/kernel
+          ln -sf /builder/compile-kernel/output /home/runner/work/_actions/jfy9606/amlogic-s9xxx-armbian/main/compile-kernel/output
+          docker run -d --privileged \
+              --name armbian-ophub \
+              -v /builder/compile-kernel:/opt/kernel/compile-kernel \
+              -v /builder/ccache:/root/.ccache \
+              -v /etc/localtime:/etc/localtime:ro \
+              -v /etc/timezone:/etc/timezone:ro \
+              -e CCACHE_DIR=/root/.ccache \
+              --restart=always \
+              jfy9606/armbian-${{ inputs.docker_image }}:arm64
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Get kernel source hash
+        id: kernelhash
+        if: ${{ steps.pull.outputs.status }} == 'success' && !cancelled()
+        run: |
+          api_url="https://api.github.com/repos/${{ inputs.kernel_source }}/linux-${{ inputs.kernel_version }}/git/ref/heads/main"
+          source_hash=$(curl -fsSL -m 20 \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              ${api_url} |
+              jq -r '.object.sha'
+          )
+          [[ -z "${source_hash}" || "${source_hash}" == "null" ]] && source_hash="${{ github.sha }}"
+          echo "source_hash=${source_hash}" >> ${GITHUB_ENV}
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: /builder/ccache
+          key: kernel-${{ inputs.kernel_toolchain }}-${{ inputs.kernel_version }}-${{ env.source_hash }}
+          restore-keys: |
+            kernel-${{ inputs.kernel_toolchain }}-${{ inputs.kernel_version }}-
+      - name: Compile the kernel [ ${{ inputs.kernel_version }} ]
+        uses: ./.github/actions/amlogic-s9xxx-armbian
+        if: ${{ steps.pull.outputs.status }} == 'success' && !cancelled()
+        with:
+          build_target: kernel
+          kernel_source: ${{ inputs.kernel_source }}
+          kernel_version: ${{ inputs.kernel_version }}
+          kernel_auto: ${{ inputs.kernel_auto }}
+          delete_source: ${{ inputs.delete_source }}
+          kernel_package: ${{ inputs.kernel_package }}
+          kernel_sign: ${{ inputs.kernel_sign }}
+          kernel_toolchain: ${{ inputs.kernel_toolchain }}
+          ccache_clear: ${{ inputs.ccache_clear }}
+      - name: Upload Kernel to Release
+        uses: jfy9606/upload-to-releases@main
+        if: ${{ env.PACKAGED_STATUS }} == 'success' && !cancelled()
+        with:
+          tag: kernel_stable
+          artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/*
+          repo: ${{ env.TARGET_REPO }}
+          allow_updates: true
+          remove_artifacts: false
+          replaces_artifacts: true
+          make_latest: false
+          gh_token: ${{ secrets.RELEASE_TOKEN }}
+          body: |
+            - These are Mainline LTS(Long Term Support) kernels that provide `stable` support for Armbian.
+            - It works with most `Amlogic`, `Rockchip`, and `Allwinner` devices. For specific details, please refer to the instructions on the homepage of repository.
+            - Dedicated BSP kernels for other Rockchip and Allwinner devices can be downloaded from the [ophub/kernel](https://github.com/ophub/kernel) repository.
+            - 这些是主线 LTS（长期支持）内核，为 Armbian 提供`稳定`的支持。
+            - 适用于 `amlogic`，`rockchip`，`allwinner` 的大部分设备，具体可以参考仓库首页的说明。
+            - 其他的 Rockchip 和 Allwinner 设备专用 BSP 内核可以在 [ophub/kernel](https://github.com/ophub/kernel) 仓库里下载使用。
+
+  build-compile-kernel-via-host:
+    if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'compile-kernel' && inputs.sub_task == 'via-host' }}
+    runs-on: ubuntu-24.04-arm
+    env:
+      CCACHE_DIR: /builder/ccache
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Checkout private armbian repo
+        uses: actions/checkout@v6
+        with:
+          repository: jfy9606/amlogic-s9xxx-armbian
+          ref: main
+          token: ${{ secrets.REPO_TOKEN }}
+          path: ./.github/actions/amlogic-s9xxx-armbian
+      - name: Initialization environment
+        id: init
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          docker rmi -f $(docker images -q) 2>/dev/null || true
+          [[ -n "${AGENT_TOOLSDIRECTORY}" ]] && sudo rm -rf "${AGENT_TOOLSDIRECTORY}"
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android 2>/dev/null
+          sudo swapoff -a
+          sudo rm -f /swapfile /mnt/swapfile
+          sudo -E apt-get -y update
+          sudo -E apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
+          sudo -E apt-get -y install $(curl -fsSL https://ophub.org/ubuntu2404-build-armbian-depends)
+          sudo -E systemctl daemon-reload
+          sudo -E apt-get -y autoremove --purge
+          sudo -E apt-get clean
+          sudo sed -i '/NVM_DIR/d;/skel/d' /root/{.bashrc,.profile}
+          sudo rm -rf ~/{.cargo,.dotnet,.rustup}
+          sudo -E timedatectl set-timezone "${TZ:-Etc/UTC}"
+          sudo -E ntpdate ntp.ubuntu.com 0.pool.ntp.org || true
+          sudo -E timedatectl set-ntp true
+          date -u
+          timedatectl status || true
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Create simulated physical disk
+        id: disk
+        run: |
+          mnt_size=$(expr $(df -h /mnt | tail -1 | awk '{print $4}' | sed 's/[[:alpha:]]//g' | sed 's/\..*//') - 1)
+          root_size=$(expr $(df -h / | tail -1 | awk '{print $4}' | sed 's/[[:alpha:]]//g' | sed 's/\..*//') - 4)
+          sudo truncate -s "${mnt_size}"G /mnt/mnt.img
+          sudo truncate -s "${root_size}"G /root.img
+          sudo losetup /dev/loop6 /mnt/mnt.img
+          sudo losetup /dev/loop7 /root.img
+          sudo pvcreate /dev/loop6
+          sudo pvcreate /dev/loop7
+          sudo vgcreate github /dev/loop6 /dev/loop7
+          sudo lvcreate -n runner -l 100%FREE github
+          sudo mkfs.xfs -f -i sparse=0 -b size=4096 /dev/github/runner
+          sudo mkdir -p /builder
+          sudo mount /dev/github/runner /builder
+          sudo chown -R runner:runner /builder
+          df -Th
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Create a mapped directory
+        id: mapped
+        working-directory: /builder
+        run: |
+          df -hT ${PWD}
+          mkdir -p /builder/{kernel,output,ccache}
+          ln -sf /builder/kernel /home/runner/work/_actions/jfy9606/amlogic-s9xxx-armbian/main/compile-kernel/kernel
+          ln -sf /builder/output /home/runner/work/_actions/jfy9606/amlogic-s9xxx-armbian/main/compile-kernel/output
+          sudo rm -rf /root/.ccache
+          sudo ln -sf /builder/ccache /root/.ccache
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Get kernel source hash
+        id: kernelhash
+        if: ${{ steps.mapped.outputs.status }} == 'success' && !cancelled()
+        run: |
+          api_url="https://api.github.com/repos/${{ inputs.kernel_source }}/linux-${{ inputs.kernel_version }}/git/ref/heads/main"
+          source_hash=$(curl -fsSL -m 20 \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              ${api_url} |
+              jq -r '.object.sha'
+          )
+          [[ -z "${source_hash}" || "${source_hash}" == "null" ]] && source_hash="${{ github.sha }}"
+          echo "source_hash=${source_hash}" >> ${GITHUB_ENV}
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: /builder/ccache
+          key: kernel-${{ inputs.kernel_toolchain }}-${{ inputs.kernel_version }}-${{ env.source_hash }}
+          restore-keys: |
+            kernel-${{ inputs.kernel_toolchain }}-${{ inputs.kernel_version }}-
+      - name: Compile the kernel [ ${{ inputs.kernel_version }} ]
+        uses: ./.github/actions/amlogic-s9xxx-armbian
+        if: ${{ steps.mapped.outputs.status }} == 'success' && !cancelled()
+        with:
+          build_target: kernel
+          kernel_source: ${{ inputs.kernel_source }}
+          kernel_version: ${{ inputs.kernel_version }}
+          kernel_auto: ${{ inputs.kernel_auto }}
+          delete_source: ${{ inputs.delete_source }}
+          kernel_package: ${{ inputs.kernel_package }}
+          kernel_sign: ${{ inputs.kernel_sign }}
+          kernel_toolchain: ${{ inputs.kernel_toolchain }}
+          ccache_clear: ${{ inputs.ccache_clear }}
+      - name: Upload Kernel to Release
+        uses: jfy9606/upload-to-releases@main
+        if: ${{ env.PACKAGED_STATUS }} == 'success' && !cancelled()
+        with:
+          tag: kernel_stable
+          artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/*
+          repo: ${{ env.TARGET_REPO }}
+          allow_updates: true
+          remove_artifacts: false
+          replaces_artifacts: true
+          make_latest: false
+          gh_token: ${{ secrets.RELEASE_TOKEN }}
+          body: |
+            - These are Mainline LTS(Long Term Support) kernels that provide `stable` support for Armbian.
+            - It works with most `Amlogic`, `Rockchip`, and `Allwinner` devices. For specific details, please refer to the instructions on the homepage of repository.
+            - Dedicated BSP kernels for other Rockchip and Allwinner devices can be downloaded from the [ophub/kernel](https://github.com/ophub/kernel) repository.
+            - 这些是主线 LTS（长期支持）内核，为 Armbian 提供`稳定`的支持。
+            - 适用于 `amlogic`，`rockchip`，`allwinner` 的大部分设备，具体可以参考仓库首页的说明。
+            - 其他的 Rockchip 和 Allwinner 设备专用 BSP 内核可以在 [ophub/kernel](https://github.com/ophub/kernel) 仓库里下载使用。
+
+  build-docker:
+    needs: [setup-docker]
+    if: ${{ github.event.repository.owner.id == github.event.sender.id && inputs.build_type == 'docker' }}
+    runs-on: ubuntu-26.04-arm
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.setup-docker.outputs.matrix) }}
+    name: build-docker:${{ matrix.branch }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Checkout private armbian repo
+        uses: actions/checkout@v6
+        with:
+          repository: jfy9606/amlogic-s9xxx-armbian
+          ref: main
+          token: ${{ secrets.REPO_TOKEN }}
+          path: ./.github/actions/amlogic-s9xxx-armbian
+      - name: Download Armbian rootfs file [ ${{ matrix.branch }} ]
+        id: down
+        if: (!cancelled())
+        run: |
+          latest_version=$(curl -s \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${{ secrets.REPO_TOKEN }}" \
+              https://api.github.com/repos/jfy9606/amlogic-s9xxx-armbian/releases?per_page=20 | \
+              jq -r --arg RTK "Armbian_${{ matrix.branch }}_arm64_" \
+              --arg BOARD "rootfs" \
+              '[.[] | select(.tag_name | contains($RTK)) |
+              {tag: .tag_name} + (.assets[] | select(.name | contains($BOARD) and endswith(".tar.gz")) |
+              {data: .updated_at, url: .url, name: .name})] |
+              sort_by(.data) |
+              reverse |
+              .[0]')
+          [[ -z "${latest_version}" || "${latest_version}" == "null" ]] && {
+              echo "Error: Failed to resolve Armbian rootfs download URL."
+              exit 1
+          }
+          latest_url="$(echo ${latest_version} | jq -r '.url')"
+          armbian_filename="$(echo ${latest_version} | jq -r '.name')"
+          release_tag="$(echo ${latest_version} | jq -r '.tag')"
+          echo "Matched release tag: ${release_tag}"
+          echo "build_tag=${release_tag}" >> ${GITHUB_OUTPUT}
+          echo "Downloading: ${armbian_filename}"
+          [[ -d "armbian" ]] || mkdir -p armbian
+          curl -fsSL \
+               -H "Authorization: Bearer ${{ secrets.REPO_TOKEN }}" \
+               -H "Accept: application/octet-stream" \
+               "${latest_url}" \
+               -o "armbian/${armbian_filename}"
+          [[ "${?}" -ne "0" ]] && echo "Error: Download failed." && exit 1
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Build the Docker image
+        id: make
+        if: ${{ steps.down.outputs.status == 'success' && !cancelled() }}
+        run: |
+          chmod +x ${MAKE_DOCKER_SH}
+          ${MAKE_DOCKER_SH} ${{ matrix.branch }} arm64
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Upload rebuilt images to Release
+        uses: jfy9606/upload-to-releases@main
+        if: ${{ steps.make.outputs.status == 'success' && !cancelled() }}
+        with:
+          tag: ${{ steps.down.outputs.build_tag }}
+          artifacts: out/*.tar.gz
+          repo: ${{ env.TARGET_REPO }}
+          allow_updates: true
+          remove_artifacts: false
+          replaces_artifacts: true
+          make_latest: true
+          gh_token: ${{ secrets.RELEASE_TOKEN }}
+          body: |
+            ### Armbian Image Information
+            - Default username: `root`
+            - Default password: `1234`
+            - Install command: `armbian-install`
+            - Update command: `armbian-update`
+            ### Applicable Platform
+            - 🐧 `arm64`
+            - 🐋 Docker image: https://hub.docker.com/u/ophub
+      - name: Login to Docker Hub
+        id: login
+        if: ${{ steps.make.outputs.status == 'success' && !cancelled() }}
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - name: Load and push image to Docker Hub
+        id: push
+        if: ${{ steps.make.outputs.status == 'success' && !cancelled() }}
+        run: |
+          offline_image="$(ls out/*.tar.gz 2>/dev/null | head -n 1)"
+          [[ -z "${offline_image}" ]] && echo "Error: No offline image found." && exit 1
+          loaded_image="$(docker load -i "${offline_image}" | grep -oP 'Loaded image: \K.*')"
+          [[ -z "${loaded_image}" ]] && echo "Error: Failed to load Docker image." && exit 1
+          echo "Loaded image: ${loaded_image}"
+          docker tag "${loaded_image}" "${{ inputs.docker_img }}-${{ matrix.branch }}:arm64"
+          docker tag "${loaded_image}" "${{ inputs.docker_img }}-${{ matrix.branch }}:latest"
+          docker push "${{ inputs.docker_img }}-${{ matrix.branch }}:arm64"
+          docker push "${{ inputs.docker_img }}-${{ matrix.branch }}:latest"
+          echo "status=success" >> ${GITHUB_OUTPUT}
