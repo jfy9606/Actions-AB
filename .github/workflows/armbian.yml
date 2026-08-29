@@ -337,7 +337,7 @@ on:
       builder_name:
         description: "Set Armbian builder signature."
         required: false
-        default: "ophub"
+        default: "jfy9606"
         type: choice
         options:
           - ophub
@@ -423,7 +423,7 @@ on:
           - bookworm
           - resolute
           - noble
-          - jammy
+
       kernel_sign:
         description: "Set the kernel custom signature"
         required: false
@@ -477,17 +477,17 @@ on:
       docker_img:
         description: "Set the docker image"
         required: false
-        default: "ophub/armbian"
+        default: "jfy9606/armbian"
         type: choice
         options:
-          - ophub/armbian
+          - jfy9606/armbian
       publish_docker:
         description: "Publish Docker image"
         required: false
-        default: "ophub/armbian"
+        default: "jfy9606/armbian"
         type: choice
         options:
-          - ophub/armbian
+          - jfy9606/armbian
           - none
 
 env:
